@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dubito.cegis import PathMapReformulator, parse_replacements, run_cegis
 from dubito.exchange import exchange_check
-from dubito.faces import evaluate_tool, tool_descriptors
+from dubito.faces import call_tool, evaluate_tool, tool_descriptors
 from dubito.lessons import distill_path
 from dubito.load import load_formulation
 from dubito.pipeline import verify
@@ -79,6 +79,26 @@ def main(argv: list[str] | None = None) -> int:
     lessons.add_argument("--archive", type=Path, required=True)
     lessons.add_argument("--indent", type=int, default=2)
 
+    spec = sub.add_parser("spec", help="Agent-facing spec (narrative + variables; no verification IR)")
+    spec.add_argument("--problem", type=Path, required=True)
+    spec.add_argument("--formulations", type=int, default=2, dest="n_formulations")
+    spec.add_argument("--indent", type=int, default=2)
+
+    contract = sub.add_parser("contract", help="formulation() contract and skeleton")
+    contract.add_argument("--problem", type=Path, default=None)
+    contract.add_argument("--class", dest="problem_class", default=None)
+    contract.add_argument("--indent", type=int, default=2)
+
+    playbook = sub.add_parser("playbook", help="How an external model should call the tools")
+    playbook.add_argument("--indent", type=int, default=2)
+
+    call = sub.add_parser("call", help="Invoke one tool by name with JSON arguments")
+    call.add_argument("name")
+    call.add_argument("--args", default="{}", help="JSON object of tool arguments")
+    call.add_argument("--indent", type=int, default=2)
+
+    mcp = sub.add_parser("mcp", help="JSON-RPC MCP stdio server (no SDK)")
+
     args = parser.parse_args(argv)
     if args.cmd == "check":
         score = run_check(
@@ -126,6 +146,42 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "lessons":
         payload = distill_path(args.archive)
         print(json.dumps(payload, indent=args.indent, sort_keys=True, default=str))
+        return 0
+    if args.cmd == "spec":
+        payload = evaluate_tool(
+            "dubito_spec",
+            {"problem": str(args.problem), "n_formulations": args.n_formulations},
+        )
+        print(json.dumps(payload, indent=args.indent, sort_keys=True))
+        return 0
+    if args.cmd == "contract":
+        arguments: dict[str, object] = {}
+        if args.problem is not None:
+            arguments["problem"] = str(args.problem)
+        if args.problem_class is not None:
+            arguments["class"] = args.problem_class
+        envelope = call_tool("dubito_contract", arguments)
+        print(json.dumps(envelope["result"] if envelope["ok"] else envelope, indent=args.indent, sort_keys=True))
+        return 0 if envelope["ok"] else 2
+    if args.cmd == "playbook":
+        print(json.dumps(evaluate_tool("dubito_playbook"), indent=args.indent, sort_keys=True))
+        return 0
+    if args.cmd == "call":
+        try:
+            raw_args = json.loads(args.args)
+        except json.JSONDecodeError as exc:
+            print(json.dumps({"ok": False, "error": {"type": "JSONDecodeError", "message": str(exc)}}))
+            return 2
+        if not isinstance(raw_args, dict):
+            print(json.dumps({"ok": False, "error": {"message": "--args must be a JSON object"}}))
+            return 2
+        envelope = call_tool(args.name, raw_args)
+        print(json.dumps(envelope, indent=args.indent, sort_keys=True, default=str))
+        return 0 if envelope["ok"] else 1
+    if args.cmd == "mcp":
+        from dubito.mcp import serve
+
+        serve()
         return 0
     raise AssertionError(args.cmd)
 
