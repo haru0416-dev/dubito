@@ -12,7 +12,7 @@
 
 対象は、数理最適化(LP/MILP/凸/非線形)、制約充足、ブラックボックス最適化、記号回帰。対話利用(MCP)とループ組み込み(ライブラリ/CLI)の両方の顔を持つ。
 
-やらないこと: ソルバー自体の実装、汎用の完全なメタソルバー(一般問題を解く必要はない — 有用な部分集合で十分)、人間向けGUI。
+やらないこと: ソルバー自体の実装、汎用の完全なメタソルバー(一般問題を解く必要はない — 有用な部分集で十分)、人間向けGUI。
 
 ## 3. 設計原理
 
@@ -81,6 +81,8 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
 
 **Phase 5 結果 (2026-08-19):** LLM は呼ばない。`dubito.archive/v1` を `(problem_id, kind, verification_hash)` で集計し `dubito.lessons/v1` にする。CLI は `python -m dubito lessons --archive`。プロンプト注入は外部エージェントの仕事。
+
+**自己適用 (2026-08-19):** 内部で数理計画になっている箇所に dubito を当てた。`dual.py` の検証 IR 双対（SciPy HiGHS 一本）と `properties.local_optimality` の近傍（格子/Hypothesis）を、独立な CVXPY/OR-Tools 定式化として書き、同じ `verify()` で疑う。ルーターはクラス表であり最適化問題にしない。`python -m dubito self`。詳細は `probes/self/`。
 
 ## 6. 主要リスク
 
