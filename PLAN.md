@@ -45,7 +45,7 @@
 | 記号回帰 | PySR | ホールドアウト+次元解析+プロパティ |
 | 非線形(局所/大域) | SciPy, Pyomo+Ipopt / SCIP | 大域: 保証付き上下界。局所: KKT+マルチスタート照合 |
 | 記号求解・厳密解 | SymPy | 数値解との厳密照合(検証層の資産でもある) |
-| 多目的 | pymoo, Optuna | 支配関係検査、パレート前線の相互被覆 |
+| 多目的 | pymoo, Optuna | 支配関係検査、パレート前線の相互覆蓋 |
 | 経路・スケジューリング | OR-Tools routing/CP-SAT | MILP定式化との交換検査 |
 
 検証強度が右に行くほど落ちる。「この解はどこまで保証されているか」をスコアに明示する。
@@ -79,7 +79,7 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 
 **Phase 4 結果 (2026-08-19):** SDK 無しの stdio MCP（`python -m dubito mcp`）。ツールは `dubito_spec`（IR を出さない）→ `dubito_contract` → compact `dubito_check`（`agent.repair` / `ceiling`）。`call_tool` は ok/error 封筒。OpenEvolve 側は既存 `dubito.evaluator`。手順は `docs/agent.md`。
 
-**コード検証機 (2026-08-19):** 使う対象は定式化コード。`verify()` の先頭層 `code` が AST で IR import / ピア import / `formulation()` 欠落を見る。解が一致していても YAML をコンパイルしていれば `disagree`（`code_import`）。一般 Python 検証器にはしない。
+**コード検証機 (2026-08-19):** 使う対象は定式化コード。`verify()` の先頭層 `code` が AST で IR import / ピア import / `formulation()` 欠落を見る。解が一致していても YAML をコンパイルしていれば `disagree`（`code_import`）。一般 Python 検証器にはしない。「重い」という訴えだけでは設計を導かない。モデルの近傍パッチは局所最適であり、測れる目的と制約を物語にしてから独立定式化する。詳細は `docs/agent.md`。
 
 **Phase 5 — 自己改善**
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
