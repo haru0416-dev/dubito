@@ -7,6 +7,8 @@ from pathlib import Path
 
 from dubito.exchange import exchange_check
 from dubito.load import load_formulation
+from dubito.pipeline import verify
+from dubito.problem import load_problem
 from dubito.score import score_to_json
 from dubito.model import Formulation, ScoreVector, Tolerances
 
@@ -21,8 +23,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    check = sub.add_parser("check", help="Exchange-check formulation modules")
+    check = sub.add_parser("check", help="Verify formulation modules (exchange, and SMT if --problem)")
     check.add_argument("paths", nargs="+", type=Path, help="Python modules exporting formulation()")
+    check.add_argument(
+        "--problem",
+        type=Path,
+        default=None,
+        help="Structured problem YAML (verification IR is consumed only by Z3)",
+    )
     check.add_argument("--problem-id", default=None)
     check.add_argument("--indent", type=int, default=2)
 
@@ -31,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.cmd == "check":
-        score = _run_check(args.paths, problem_id=args.problem_id)
+        score = run_check(args.paths, problem_path=args.problem, problem_id=args.problem_id)
         print(score_to_json(score, indent=args.indent))
         return 0 if score.verdict == "agree" else 1
     if args.cmd == "probe":
@@ -42,8 +50,18 @@ def main(argv: list[str] | None = None) -> int:
     raise AssertionError(args.cmd)
 
 
-def _run_check(paths: list[Path], problem_id: str | None) -> ScoreVector:
+def run_check(
+    paths: list[Path],
+    *,
+    problem_path: Path | None = None,
+    problem_id: str | None = None,
+) -> ScoreVector:
     formulations: list[Formulation] = [load_formulation(path) for path in paths]
+    if problem_path is not None:
+        problem = load_problem(problem_path)
+        return verify(formulations, problem)
+    if len(formulations) < 2:
+        raise SystemExit("check without --problem needs at least two formulation modules")
     return exchange_check(formulations, tol=Tolerances(), problem_id=problem_id)
 
 
@@ -95,7 +113,7 @@ def run_phase0_probe() -> dict[str, object]:
     false_agreement = 0
     false_disagreement = 0
     for case in cases:
-        score = _run_check(case["paths"], problem_id="furniture-workshop-v1")
+        score = run_check(case["paths"], problem_id="furniture-workshop-v1")
         detected = score.verdict == case["expect"]
         if case["expect"] == "disagree" and detected:
             detections += 1

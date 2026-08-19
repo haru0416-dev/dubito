@@ -1,8 +1,10 @@
+schema: dubito.problem/v1
 id: furniture-workshop-v1
 class: milp
 sense: max
-# Exchange interface only. Constraints are NOT encoded here.
-# Formulations must be written independently from the narrative in PROBLEM.md.
+# Variable names are the exchange interface.
+# The verification block is consumed only by Z3 / the residual checker.
+# Solver formulation modules must not import this file.
 variables:
   tables:
     kind: integer
@@ -22,3 +24,19 @@ tolerances:
   objective_abs: 1.0e-6
   objective_rel: 1.0e-6
   integrality: 1.0e-8
+verification:
+  constraints:
+    - name: wood
+      terms: {tables: 3, chairs: 1}
+      op: "<="
+      rhs: 12
+    - name: labor
+      terms: {tables: 2, chairs: 1}
+      op: "<="
+      rhs: 10
+    - name: mix
+      terms: {chairs: 1, tables: -2}
+      op: ">="
+      rhs: 0
+  objective:
+    terms: {tables: 50, chairs: 20}
