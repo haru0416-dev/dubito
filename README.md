@@ -1,8 +1,13 @@
 # dubito (working name)
 
-A tool that **doubts solutions**.
+A tool that **doubts formulation code**.
 
-Given a mathematical problem, independently formulate it in multiple solvers, swap the solutions, check them against a spec-derived Z3 encoding, and emit a deterministic score vector. The point is not to win an accuracy contest. The point is to make wrong answers detectable — including as an LLM-free fitness function for evolutionary agents.
+Given a mathematical problem, independently written solver modules are the
+object under test. dubito swaps their solutions, checks them against a
+spec-derived witness (Z3 / residual / dual), inspects the source so nobody
+compiled the YAML `verification` block, and emits a deterministic score
+vector. It is not a solver. The point is to make wrong encodings detectable —
+including as an LLM-free fitness function for evolutionary coding agents.
 
 The product name is unset on purpose. Phase 0 confirmed the exchange-check hypothesis. Phase 1 is the LP/MILP MVP. Phase 2 adds dual bounds, Hypothesis properties, a JSONL counterexample archive, and an LLM-free CEGIS loop. Phase 3 routes verification layers by problem class and adds residual NLP. Phase 4/5 add tool descriptors and an archive distiller.
 
@@ -46,7 +51,7 @@ CEGIS (`python -m dubito cegis`) archives counterexamples and applies a `Reformu
 
 ## Phase 3
 
-The router chooses **verification layers**, not which solver to run. Formulations stay independently written. `lp`/`milp` keep exchange+SMT+dual+properties. `nlp` runs exchange+residual+properties (no Z3, no LP dual). Other classes are declared; unimplemented layers show up as `skipped:not-implemented`. Residual IR is a whitelist arithmetic witness (`docs/beyond.md`). Probe: [probes/phase3/PROBLEM.md](probes/phase3/PROBLEM.md).
+The router chooses **verification layers**, not which solver to run. Formulations stay independently written. Every class starts with a `code` hygiene layer (AST: no IR imports). `lp`/`milp` then keep exchange+SMT+dual+properties. `nlp` runs exchange+residual+properties (no Z3, no LP dual). Other classes are declared; unimplemented layers show up as `skipped:not-implemented`. Residual IR is a whitelist arithmetic witness (`docs/beyond.md`). Probe: [probes/phase3/PROBLEM.md](probes/phase3/PROBLEM.md).
 
 ## Phase 4 / 5
 
@@ -62,7 +67,7 @@ External models talk to dubito through tools. There is still no in-process LLM.
 
 ## Score vector
 
-`verdict`, `agreement`, per-solver feasibility, claimed objectives, optimality status, `smt_feasible`, `smt_objective_match`, `dual_bound` / `dual_gap` / `dual_closed`, `residual_feasible` / `residual_objective_match`, `properties_ok`, `layers`, `profile`, counterexamples, runtimes, explicit `guarantee` and `verification_strength` (the `+` join of layers that `ran`). Natural language is not the output.
+`verdict`, `agreement`, per-solver feasibility, claimed objectives, optimality status, `code_ok`, `smt_feasible`, `smt_objective_match`, `dual_bound` / `dual_gap` / `dual_closed`, `residual_feasible` / `residual_objective_match`, `properties_ok`, `layers`, `profile`, counterexamples, runtimes, explicit `guarantee` and `verification_strength` (the `+` join of layers that `ran`). Natural language is not the output.
 
 `dubito.evaluator.evaluate` maps this to OpenEvolve metrics (`combined_score` is 1 only on `agree`). Optional env: `DUBITO_PROBLEM`, `DUBITO_PEER_FORMULATIONS`.
 

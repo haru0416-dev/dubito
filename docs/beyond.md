@@ -10,6 +10,7 @@
 |---|---|
 | クラス → 検証プロファイル | クラス → CVXPY/Pyomo への機械変換 |
 | 検証 IR（linear / residual）は verifier 専用 | 定式化モジュールが YAML `verification` を import |
+| 定式化**コード**の静的検査（IR import 禁止） | 任意 Python のリント / セキュリティ検証 |
 | 検証強度を構造化 (`layers` + ceiling) | 「一致したので最適」と省略 |
 | バックエンドは任意依存 (`[nlp]` は SciPy 既存、Optuna 等は extra) | P3 で 6 ソルバーを全部本依存にする |
 | LLM はプロセス外 | 内蔵モデル呼び出し |
@@ -31,9 +32,9 @@ PLAN のリスク「スコープ肥大」に従い、実装スライスは次の
 
 | class | 既定の層 | 天井（これ以上は嘘にしない） |
 |---|---|---|
-| `lp` | exchange, smt, dual, properties | LP 双対が閉じれば強双対 |
+| `lp` | code, exchange, smt, dual, properties | LP 双対が閉じれば強双対 |
 | `milp` | 同上 | 整数実行可能かつ dual 一致なら IP 最適。ギャップは証明書ではない |
-| `nlp` | exchange, residual, properties | 残差と局所近傍。大域最適の証明ではない。線形双対は走らせない |
+| `nlp` | code, exchange, residual, properties | 残差と局所近傍。大域最適の証明ではない。線形双対は走らせない |
 | `convex` | exchange, residual, kkt | KKT 未実装の間は残差まで。双対ギャップは後続 |
 | `sat` | exchange, smt | 両エンコーディングは対等。未実装 |
 | `blackbox` | properties | 交換検査の「最適一致」は弱信号。未実装バックエンド |

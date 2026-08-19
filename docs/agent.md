@@ -1,13 +1,13 @@
 # 外部モデル向けの使い方
 
-dubito は LLM を内蔵しない。モデルはプロセスの外で、ツール経由で定式化を書き、スコアを読む。
+dubito は LLM を内蔵しない。**検証対象は定式化コード**（`formulation()` モジュール）である。モデルはプロセスの外でモジュールを書き、スコアを読む。汎用の Python 検証器ではない。
 
 ## ループ
 
 1. `dubito_spec` — 物語・変数名・クラス・天井。**検証 IR は返さない**。
 2. `dubito_contract` — `formulation()` の形とスケルトン。制約は物語から書く。
 3. バックエンドを **2 つ以上、独立に** 書く（同じ制約行列のコピーは禁止）。
-4. `dubito_check` — 既定は compact。`agent.next` / `agent.repair` / `agent.ceiling` を読む。
+4. `dubito_check` — まずソース（IR import 禁止）、それからソルバー。既定 compact。`agent.next` / `agent.repair` / `agent.ceiling` を読む。
 5. `disagree` なら指名されたモジュールを物語から書き直す。`agree` なら止まり、天井以上を主張しない。
 
 ## Cursor / Claude Desktop
