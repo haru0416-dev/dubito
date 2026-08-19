@@ -23,11 +23,11 @@ _PHASE0 = _REPO_ROOT / "probes/phase0"
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="dubito",
-        description="Cross-check independently formulated solver encodings.",
+        description="Verify independently written formulation code.",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    check = sub.add_parser("check", help="Verify formulation modules (router selects layers)")
+    check = sub.add_parser("check", help="Verify formulation code (router selects layers)")
     check.add_argument("paths", nargs="+", type=Path, help="Python modules exporting formulation()")
     check.add_argument(
         "--problem",

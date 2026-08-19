@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 LayerName = Literal[
+    "code",
     "exchange",
     "smt",
     "dual",
@@ -23,7 +24,7 @@ LayerName = Literal[
 LayerStatus = str  # "ran" | "skipped:<reason>" | "off"
 
 IMPLEMENTED_LAYERS: frozenset[str] = frozenset(
-    {"exchange", "smt", "dual", "residual", "properties"}
+    {"code", "exchange", "smt", "dual", "residual", "properties"}
 )
 
 # YAML `class` values. Declared classes may load even when some layers are stubs.
@@ -52,13 +53,13 @@ class ClassProfile:
 PROFILES: dict[str, ClassProfile] = {
     "lp": ClassProfile(
         problem_class="lp",
-        layers=("exchange", "smt", "dual", "properties"),
+        layers=("code", "exchange", "smt", "dual", "properties"),
         backends=("cvxpy", "ortools", "scipy", "pyomo"),
         ceiling="LP dual certificate when the bound closes; not a solver-generated proof",
     ),
     "milp": ClassProfile(
         problem_class="milp",
-        layers=("exchange", "smt", "dual", "properties"),
+        layers=("code", "exchange", "smt", "dual", "properties"),
         backends=("cvxpy", "ortools", "pyomo"),
         ceiling=(
             "integer-feasible point matching the LP dual is IP-optimal against this IR; "
@@ -67,49 +68,49 @@ PROFILES: dict[str, ClassProfile] = {
     ),
     "nlp": ClassProfile(
         problem_class="nlp",
-        layers=("exchange", "residual", "properties"),
+        layers=("code", "exchange", "residual", "properties"),
         backends=("scipy", "cvxpy", "pyomo"),
         ceiling="residual feasibility and local neighborhood only; not a global certificate",
         notes="nonlinear real SMT is incomplete; P3a does not run Z3 on residual IR",
     ),
     "convex": ClassProfile(
         problem_class="convex",
-        layers=("exchange", "residual", "kkt", "properties"),
+        layers=("code", "exchange", "residual", "kkt", "properties"),
         backends=("cvxpy", "scipy"),
         ceiling="KKT/dual gap when implemented; until then residual only",
         notes="kkt layer is not implemented",
     ),
     "sat": ClassProfile(
         problem_class="sat",
-        layers=("exchange", "smt"),
+        layers=("code", "exchange", "smt"),
         backends=("ortools", "z3"),
         ceiling="peer encodings are equals; no LP dual",
         notes="sat exchange/SMT pairing is not implemented",
     ),
     "blackbox": ClassProfile(
         problem_class="blackbox",
-        layers=("properties",),
+        layers=("code", "properties"),
         backends=("optuna", "scipy"),
         ceiling="property tests only; claimed optima are not certificates",
         notes="Optuna extra is reserved; no black-box backend ships in P3a",
     ),
     "symbolic_regression": ClassProfile(
         problem_class="symbolic_regression",
-        layers=("holdout", "properties"),
+        layers=("code", "holdout", "properties"),
         backends=("pysr",),
         ceiling="holdout plus properties; not an identity proof",
         notes="holdout layer is not implemented",
     ),
     "multiobjective": ClassProfile(
         problem_class="multiobjective",
-        layers=("dominance",),
+        layers=("code", "dominance"),
         backends=("pymoo", "optuna"),
         ceiling="Pareto coverage when implemented",
         notes="dominance layer is not implemented",
     ),
     "routing": ClassProfile(
         problem_class="routing",
-        layers=("exchange",),
+        layers=("code", "exchange"),
         backends=("ortools",),
         ceiling="exchange against a peer formulation only",
         notes="routing-specific exchange is not implemented beyond generic exchange",
