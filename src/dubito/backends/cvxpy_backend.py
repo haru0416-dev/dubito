@@ -5,6 +5,7 @@ from abc import abstractmethod
 from typing import Mapping
 
 import cvxpy as cp
+import numpy as np
 
 from dubito.numeric import as_number, bound_violation, nearest_int
 from dubito.model import (
@@ -79,7 +80,9 @@ class CvxpyFormulation(Formulation):
                 )
                 continue
             value = as_number(assignment[name])
-            var.value = value
+            # Integer variables without nonneg reject a Python float in CVXPY 1.9
+            # (project() expects an array). Furniture hid this by using nonneg=True.
+            var.value = np.asarray(value, dtype=float)
             lower = _var_lower(var)
             upper = _var_upper(var)
             bound = bound_violation(value, lower, upper)

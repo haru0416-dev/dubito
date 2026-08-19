@@ -1,0 +1,52 @@
+schema: dubito.problem/v1
+id: furniture-local-opt-v1
+class: milp
+sense: max
+variables:
+  tables:
+    kind: integer
+    lower: 0
+    upper: 4
+  chairs:
+    kind: integer
+    lower: 4
+    upper: 8
+narrative: |
+  Same workshop as furniture-workshop-v1, restricted to the L-inf ball of
+  radius 2 around the incumbent (tables=2, chairs=6) that the independent
+  MILP encodings already found. This is the question properties.local_optimality
+  samples; here it is an explicit MILP.
+
+  One table uses 3 wood and 2 labor, profit 50. One chair uses 1 wood and
+  1 labor, profit 20. Stock: 12 wood, 10 labor. At least two chairs per
+  table. Tables in {0,1,2,3,4}, chairs in {4,5,6,7,8}. Maximize profit.
+
+  The missing-labor point (0, 12) is outside this box on purpose. Formulation
+  modules must not import this YAML.
+tolerances:
+  primal_feasibility: 1.0e-6
+  objective_abs: 1.0e-6
+  objective_rel: 1.0e-6
+  integrality: 1.0e-8
+verification:
+  constraints:
+    - name: wood
+      terms: {tables: 3, chairs: 1}
+      op: "<="
+      rhs: 12
+    - name: labor
+      terms: {tables: 2, chairs: 1}
+      op: "<="
+      rhs: 10
+    - name: mix
+      terms: {chairs: 1, tables: -2}
+      op: ">="
+      rhs: 0
+  objective:
+    terms: {tables: 50, chairs: 20}
+properties:
+  local_optimality:
+    radius: 1
+    max_examples: 20
+determinism:
+  seed: 0
