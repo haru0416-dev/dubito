@@ -22,6 +22,7 @@ python -m dubito playbook
 python -m dubito tools
 python -m dubito mcp   # stdio JSON-RPC; see docs/agent.md
 python -m dubito probe
+python -m dubito self   # dual.py + local-opt box, independently formulated
 python -m dubito cegis --problem probes/phase0/furniture.yaml --max-iters 3 \
   --replace cvxpy_inverted_ratio.py=ortools_ok.py \
   probes/phase0/formulations/cvxpy_ok.py \
@@ -57,6 +58,7 @@ External models talk to dubito through tools. There is still no in-process LLM.
 - `dubito_check` via tools defaults to compact JSON with `agent.next` / `agent.repair` / `agent.ceiling`
 - `python -m dubito lessons --archive …` → `dubito.lessons/v1`
 - `determinism.seed` is on the problem spec
+- `python -m dubito self` — apply the checker to the LPs already inside `dual.py` and `properties.local_optimality` ([probes/self/](probes/self/PROBLEM.md))
 
 ## Score vector
 
@@ -72,6 +74,7 @@ Tolerances: [docs/tolerances.md](docs/tolerances.md).
 src/dubito/           exchange, SMT, dual, residual, router, CEGIS, archive, lessons, faces, agent, mcp, CLI, evaluator
 probes/phase0/        furniture MILP, independent formulations, planted bugs
 probes/phase3/        Rosenbrock NLP, SciPy formulations, shifted-valley bug
+probes/self/          furniture dual LP + local-opt box (dubito applied to itself)
 docs/problem-schema.md
 docs/archive.md
 docs/beyond.md

@@ -82,6 +82,8 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 
 **Phase 5 結果 (2026-08-19):** LLM は呼ばない。`dubito.archive/v1` を `(problem_id, kind, verification_hash)` で集計し `dubito.lessons/v1` にする。CLI は `python -m dubito lessons --archive`。プロンプト注入は外部エージェントの仕事。
 
+**自己適用 (2026-08-19):** 内部で数理計画になっている箇所に dubito を当てた。`dual.py` の検証 IR 双対（SciPy HiGHS 一本）と `properties.local_optimality` の近傍（格子/Hypothesis）を、独立な CVXPY/OR-Tools 定式化として書き、同じ `verify()` で疑う。ルーターはクラス表であり最適化問題にしない。`python -m dubito self`。詳細は `probes/self/`。
+
 ## 6. 主要リスク
 
 - **数値誤差による偽不一致。** 浮動小数の許容誤差設計を最初から仕様化する。MILPは有理数演算で厳密照合できるのでMVPに向く(Phase 1をLP/MILPに絞る理由)。

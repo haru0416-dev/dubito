@@ -13,6 +13,7 @@ from dubito.load import load_formulation
 from dubito.pipeline import verify
 from dubito.problem import load_problem
 from dubito.score import score_to_json
+from dubito.selfcheck import run_self_probe
 from dubito.model import Formulation, ScoreVector, Tolerances
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,6 +43,12 @@ def main(argv: list[str] | None = None) -> int:
 
     probe = sub.add_parser("probe", help="Run the Phase 0 planted-bug probe")
     probe.add_argument("--indent", type=int, default=2)
+
+    self_probe = sub.add_parser(
+        "self",
+        help="Apply dubito to its own internal LPs (dual.py + local-opt box)",
+    )
+    self_probe.add_argument("--indent", type=int, default=2)
 
     cegis = sub.add_parser("cegis", help="Verify, archive counterexamples, reformulate, repeat")
     cegis.add_argument("paths", nargs="+", type=Path, help="Python modules exporting formulation()")
@@ -116,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(payload, indent=args.indent, sort_keys=True))
         hypothesis_ok = bool(payload["hypothesis_holds"])
         return 0 if hypothesis_ok else 2
+    if args.cmd == "self":
+        payload = run_self_probe()
+        print(json.dumps(payload, indent=args.indent, sort_keys=True, default=str))
+        return 0 if payload["hypothesis_holds"] else 2
     if args.cmd == "cegis":
         result = run_cegis_cmd(
             args.paths,

@@ -1,0 +1,55 @@
+schema: dubito.problem/v1
+id: furniture-dual-v1
+class: lp
+sense: min
+variables:
+  wood_price:
+    kind: continuous
+    lower: 0
+  labor_price:
+    kind: continuous
+    lower: 0
+  mix_price:
+    kind: continuous
+    lower: 0
+narrative: |
+  Dual of the furniture-workshop LP (the program dubito.dual solves with
+  scipy.optimize.linprog). Shadow prices on wood, labor, and the mix rule.
+
+  Wood stock is 12, labor stock is 10. The two-chairs-per-table rule is
+  written as 2*tables - chairs <= 0 (a resource with stock 0). All prices
+  are non-negative.
+
+  A table must be fully priced: 3 wood-price + 2 labor-price + 2 mix-price
+  is at least 50. A chair must be fully priced: 1 wood-price + 1 labor-price
+  minus 1 mix-price is at least 20. Minimize 12*wood-price + 10*labor-price.
+  Mix has a zero stock, so it does not appear in the objective.
+
+  Formulation modules must not import this YAML or dubito.dual.
+tolerances:
+  primal_feasibility: 1.0e-6
+  objective_abs: 1.0e-6
+  objective_rel: 1.0e-6
+  integrality: 1.0e-8
+verification:
+  constraints:
+    - name: table_cover
+      terms: {wood_price: 3, labor_price: 2, mix_price: 2}
+      op: ">="
+      rhs: 50
+    - name: chair_cover
+      terms: {wood_price: 1, labor_price: 1, mix_price: -1}
+      op: ">="
+      rhs: 20
+  objective:
+    terms: {wood_price: 12, labor_price: 10}
+properties:
+  local_optimality:
+    radius: 1
+    max_examples: 20
+  resource_monotonicity:
+    constraints: [table_cover, chair_cover]
+    max_increase: 3
+    max_examples: 12
+determinism:
+  seed: 0

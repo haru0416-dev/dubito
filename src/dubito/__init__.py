@@ -14,6 +14,7 @@ from dubito.pipeline import verify
 from dubito.problem import load_problem
 from dubito.router import route
 from dubito.score import score_to_dict
+from dubito.selfcheck import run_self_probe
 from dubito.model import Formulation, ScoreVector, SolveResult, Tolerances
 
 __version__ = "0.4.0"
@@ -32,6 +33,7 @@ __all__ = [
     "playbook",
     "route",
     "run_cegis",
+    "run_self_probe",
     "score_to_dict",
     "spec_for_agent",
     "tool_descriptors",
