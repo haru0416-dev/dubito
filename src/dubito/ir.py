@@ -5,7 +5,7 @@ from typing import Mapping
 
 from dubito.model import CheckResult, ConstraintViolation, Tolerances
 from dubito.numeric import as_number, nearest_int
-from dubito.problem import LinearConstraint, ProblemSpec, VerificationIR, VariableSpec
+from dubito.problem import LinearConstraint, ProblemSpec, VerificationIR, VariableSpec, as_linear_ir, as_residual_ir
 
 
 def assignment_values(
@@ -109,7 +109,20 @@ def evaluate_ir(
     )
 
 
+def evaluate_witness(
+    problem: ProblemSpec, assignment: Mapping[str, float], tol: Tolerances
+) -> CheckResult | None:
+    if as_linear_ir(problem) is not None:
+        return evaluate_ir(problem, assignment, tol)
+    if as_residual_ir(problem) is not None:
+        from dubito.residual import evaluate_residual
+
+        return evaluate_residual(problem, assignment, tol)
+    return None
+
+
 def _require_ir(problem: ProblemSpec) -> VerificationIR:
-    if problem.verification is None:
-        raise ValueError(f"problem {problem.id} has no verification IR")
-    return problem.verification
+    ir = as_linear_ir(problem)
+    if ir is None:
+        raise ValueError(f"problem {problem.id} has no linear verification IR")
+    return ir

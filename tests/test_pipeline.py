@@ -18,7 +18,11 @@ def test_ok_pair_agrees_with_smt() -> None:
         load_problem(_PROBLEM),
     )
     assert score.verdict == "agree"
-    assert score.verification_strength == "exchange+smt"
+    assert score.verification_strength == "exchange+smt+dual+properties"
+    assert score.layers["exchange"] == "ran"
+    assert score.layers["smt"] == "ran"
+    assert score.layers["dual"] == "ran"
+    assert score.layers["properties"] == "ran"
     assert score.smt_feasible == {"cvxpy_ok": True, "ortools_ok": True}
     assert all(score.smt_objective_match.values())
 
@@ -68,3 +72,33 @@ def test_wrong_profit_fails_smt_objective() -> None:
     assert score.smt_objective_match["ortools_ok"] is True
     kinds = {item["kind"] for item in score.counterexamples}
     assert "smt_objective_mismatch" in kinds or "objective_mismatch" in kinds
+
+
+def test_missing_labor_exceeds_dual_bound() -> None:
+    score = verify(
+        [
+            load_formulation(_OK_CVXPY),
+            load_formulation(_PHASE0 / "bugs/ortools_missing_labor.py"),
+        ],
+        load_problem(_PROBLEM),
+    )
+    assert score.verdict == "disagree"
+    assert score.dual_bound == 220.0
+    assert any(item["kind"] == "dual_bound_exceeded" for item in score.counterexamples)
+
+
+def test_flags_skip_dual_and_properties() -> None:
+    score = verify(
+        [load_formulation(_OK_CVXPY), load_formulation(_OK_ORTOOLS)],
+        load_problem(_PROBLEM),
+        check_dual=False,
+        check_properties=False,
+    )
+    assert score.verdict == "agree"
+    assert score.verification_strength == "exchange+smt"
+    assert score.dual_bound is None
+    assert score.properties_ok == {}
+    assert score.layers["dual"] == "off"
+    assert score.layers["properties"] == "off"
+    assert score.layers["exchange"] == "ran"
+    assert score.layers["smt"] == "ran"
