@@ -43,7 +43,7 @@
 | 記号回帰 | PySR | ホールドアウト+次元解析+プロパティ |
 | 非線形(局所/大域) | SciPy, Pyomo+Ipopt / SCIP | 大域: 保証付き上下界。局所: KKT+マルチスタート照合 |
 | 記号求解・厳密解 | SymPy | 数値解との厳密照合(検証層の資産でもある) |
-| 多目的 | pymoo, Optuna | 支配関係検査、パレート前線の相互被覆 |
+| 多目的 | pymoo, Optuna | 支配関係検査、パレート前線の相互覆蓋 |
 | 経路・スケジューリング | OR-Tools routing/CP-SAT | MILP定式化との交換検査 |
 
 検証強度が右に行くほど落ちる。「この解はどこまで保証されているか」をスコアに明示する。
@@ -65,6 +65,8 @@ CVXPY+OR-Toolsの独立定式化、交換検査、Z3充足検査、スコアベ�
 **Phase 2 — 検証強化**
 CEGISループ(反例→再定式化)、反例アーカイブの永続化、Hypothesis統合、双対による最適性確認。
 
+**Phase 2 結果 (2026-08-19):** 検証 IR から LP 双対を組み、主張目的が上界を超えたら `disagree`。ギャップは MILP では許容し `dual_closed` で明示する。整数実行可能解が LP 双対に一致すれば、この IR に対する IP 最適性になる。Hypothesis は SMT 実行可能な候補の局所最適性と、IR の資源単調性(定式化は再求解しない)。アーカイブは `dubito.archive/v1` JSONL。CEGIS に LLM は内蔵せず、`Reformulator`(既定は identity、CLI は `--replace`)だけを回す。
+
 **Phase 3 — クラス拡張**
 ルーター実装、Optuna/PySR/SciPy/Pyomoバックエンド追加。検証強度の段階表示。
 
@@ -83,7 +85,7 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 
 ## 7. 未決事項
 
-- 反例アーカイブの形式と、既存の知識注入基盤との接続方法
+- 反例アーカイブと、既存の知識注入基盤との接続方法(形式自体は `docs/archive.md` の `dubito.archive/v1` で固定)
 
 ## 8. Phase 1 で決めたこと
 
