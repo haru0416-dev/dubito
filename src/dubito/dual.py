@@ -13,7 +13,7 @@ import numpy as np
 from scipy.optimize import linprog
 
 from dubito.numeric import numbers_close
-from dubito.problem import ProblemSpec, VerificationIR
+from dubito.problem import ProblemSpec, VerificationIR, as_linear_ir
 
 _LINPROG_OPTS = {"disp": False}
 
@@ -59,8 +59,8 @@ def check_dual(
     (LP-relaxation only). For min, the dual is a lower bound.
     """
 
-    if problem.verification is None:
-        return DualReport(bound=None, status="skipped", notes=["no verification IR"])
+    if as_linear_ir(problem) is None:
+        return DualReport(bound=None, status="skipped", notes=["no linear verification IR"])
 
     lp_opt, lp_status, lp_notes = _solve_lp_relaxation(problem)
     dual_opt, dual_status, dual_y, dual_notes = _solve_dual(problem)
@@ -291,6 +291,7 @@ def _complementary_slackness(
 
 
 def _require_ir(problem: ProblemSpec) -> VerificationIR:
-    if problem.verification is None:
-        raise ValueError(f"problem {problem.id} has no verification IR")
-    return problem.verification
+    ir = as_linear_ir(problem)
+    if ir is None:
+        raise ValueError(f"problem {problem.id} has no linear verification IR")
+    return ir
