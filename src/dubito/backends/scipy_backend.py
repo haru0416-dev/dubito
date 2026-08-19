@@ -51,14 +51,14 @@ class ScipyFormulation(Formulation):
                 bounds=self._bounds(),
                 options=options or None,
             )
-        except Exception as exec:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             return SolveResult(
                 solver=self.name,
                 status="error",
                 assignment={},
                 objective=None,
                 runtime_ms=(time.perf_counter() - started) * 1000,
-                error=str(exec),
+                error=str(exc),
             )
         assignment = {
             name: float(result.x[index]) for index, name in enumerate(self.variables)
