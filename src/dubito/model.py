@@ -147,6 +147,7 @@ class ScoreVector:
     properties_ok: dict[str, bool | None] = field(default_factory=dict)
     residual_feasible: dict[str, bool] = field(default_factory=dict)
     residual_objective_match: dict[str, bool | None] = field(default_factory=dict)
+    code_ok: dict[str, bool] = field(default_factory=dict)
     layers: dict[str, str] = field(default_factory=dict)
     profile: dict[str, object] = field(default_factory=dict)
 
@@ -174,6 +175,7 @@ class ScoreVector:
             "properties_ok": dict(self.properties_ok),
             "residual_feasible": dict(self.residual_feasible),
             "residual_objective_match": dict(self.residual_objective_match),
+            "code_ok": dict(self.code_ok),
             "layers": dict(self.layers),
             "profile": dict(self.profile),
         }
