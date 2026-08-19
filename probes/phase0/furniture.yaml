@@ -1,0 +1,24 @@
+id: furniture-workshop-v1
+class: milp
+sense: max
+# Exchange interface only. Constraints are NOT encoded here.
+# Formulations must be written independently from the narrative in PROBLEM.md.
+variables:
+  tables:
+    kind: integer
+    lower: 0
+  chairs:
+    kind: integer
+    lower: 0
+narrative: |
+  A small workshop makes tables and chairs.
+  One table uses 3 wood and 2 labor, profit 50.
+  One chair uses 1 wood and 1 labor, profit 20.
+  Stock: 12 wood, 10 labor.
+  At least two chairs must be produced for every table.
+  Quantities are non-negative integers. Maximize profit.
+tolerances:
+  primal_feasibility: 1.0e-6
+  objective_abs: 1.0e-6
+  objective_rel: 1.0e-6
+  integrality: 1.0e-8
