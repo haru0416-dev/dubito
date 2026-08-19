@@ -65,14 +65,22 @@ CVXPY+OR-Toolsの独立定式化、交換検査、Z3充足検査、スコアベ�
 **Phase 2 — 検証強化**
 CEGISループ(反例→再定式化)、反例アーカイブの永続化、Hypothesis統合、双対による最適性確認。
 
+**Phase 2 結果 (2026-08-19):** 検証 IR から LP 双対を組み、主張目的が上界を超えたら `disagree`。ギャップは MILP では許容し `dual_closed` で明示する。整数実行可能解が LP 双対に一致すれば、この IR に対する IP 最適性になる。Hypothesis は SMT 実行可能な候補の局所最適性と、IR の資源単調性(定式化は再求解しない)。アーカイブは `dubito.archive/v1` JSONL。CEGIS に LLM は内蔵せず、`Reformulator`(既定は identity、CLI は `--replace`)だけを回す。
+
 **Phase 3 — クラス拡張**
 ルーター実装、Optuna/PySR/SciPy/Pyomoバックエンド追加。検証強度の段階表示。
+
+**Phase 3 結果 (2026-08-19):** ルーターはソルバーではなく**検証層**を選ぶ。クラスカタログは `dubito.classes.PROFILES`。`nlp` は残差 IR + SciPy アダプタ + Rosenbrock プローブまで実装。`sat` / `blackbox` / 記号回帰 / 多目的 / routing / convex の KKT はプロファイルのみ（層は `skipped:not-implemented`）。Optuna/PySR/Pyomo は extra 名だけ予約し、本依存にはしていない。
 
 **Phase 4 — 二つの顔**
 MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性の保証(シード固定、許容誤差の明示)。
 
+**Phase 4 結果 (2026-08-19):** SDK 無しの stdio MCP（`python -m dubito mcp`）。ツールは `dubito_spec`（IR を出さない）→ `dubito_contract` → compact `dubito_check`（`agent.repair` / `ceiling`）。`call_tool` は ok/error 封筒。OpenEvolve 側は既存 `dubito.evaluator`。手順は `docs/agent.md`。
+
 **Phase 5 — 自己改善**
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
+
+**Phase 5 結果 (2026-08-19):** LLM は呼ばない。`dubito.archive/v1` を `(problem_id, kind, verification_hash)` で集計し `dubito.lessons/v1` にする。CLI は `python -m dubito lessons --archive`。プロンプト注入は外部エージェントの仕事。
 
 ## 6. 主要リスク
 
@@ -83,7 +91,7 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 
 ## 7. 未決事項
 
-- 反例アーカイブの形式と、既存の知識注入基盤との接続方法
+- 反例アーカイブと、既存の知識注入基盤との接続方法(形式自体は `docs/archive.md` の `dubito.archive/v1` で固定)
 
 ## 8. Phase 1 で決めたこと
 
