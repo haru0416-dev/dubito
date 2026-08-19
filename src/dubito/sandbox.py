@@ -20,6 +20,7 @@ class SandboxedFormulation(Formulation):
 
     def __init__(self, path: str | Path) -> None:
         self._path = str(Path(path).resolve())
+        self.source_path = self._path
         meta = _run_worker({"op": "meta", "path": self._path})
         self.name = str(meta["name"])
         self.variables = tuple(meta["variables"])

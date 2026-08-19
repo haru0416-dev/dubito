@@ -35,6 +35,9 @@ def route(
         if layer not in IMPLEMENTED_LAYERS:
             routed.mark_skipped(layer, "not-implemented")
             continue
+        if layer == "code":
+            routed.status["code"] = "pending"
+            continue
         if layer == "exchange":
             if n_formulations < 2:
                 routed.mark_skipped("exchange", "single-formulation")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from dubito.archive import append_counterexamples
+from dubito.code import check_code, formulation_path
 from dubito.dual import DualReport, check_dual
 from dubito.exchange import exchange_check
 from dubito.model import (
@@ -81,6 +82,13 @@ def verify(
     else:
         score = _single_formulation_score(formulations[0], solves[formulations[0].name], problem)
 
+    if layer_pending(routed, "code"):
+        if not any(formulation_path(form) for form in formulations):
+            routed.mark_skipped("code", "no-source")
+        else:
+            _attach_code(score, formulations)
+            routed.mark_ran("code")
+
     _annotate_interface(score, formulations, problem)
 
     if layer_pending(routed, "smt"):
@@ -156,6 +164,16 @@ def _annotate_interface(
             score.notes.append(f"{form.name} sense {form.sense!r} does not match spec {problem.sense!r}")
             if score.verdict != "error":
                 score.verdict = "disagree"
+
+
+def _attach_code(score: ScoreVector, formulations: list[Formulation]) -> None:
+    report = check_code(formulations)
+    score.code_ok = dict(report.ok)
+    score.notes.extend(report.notes)
+    for finding in report.findings:
+        score.counterexamples.append(finding.to_counterexample())
+        score.notes.append(f"{finding.solver}: {finding.detail}")
+        _downgrade(score, "disagree")
 
 
 def _attach_smt(
