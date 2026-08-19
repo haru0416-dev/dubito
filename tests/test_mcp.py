@@ -25,7 +25,7 @@ def test_initialize_advertises_tools_and_instructions() -> None:
     assert "tools" in result["capabilities"]
     assert "dubito_spec" in result["instructions"]
     assert "verification" in result["instructions"].lower()
-    assert "hot path" in result["instructions"].lower()
+    assert "local_optimality" in result["instructions"]
 
 
 def test_initialized_notification_has_no_response() -> None:

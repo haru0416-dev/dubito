@@ -46,7 +46,10 @@ def test_playbook_states_the_loop() -> None:
     heavy = book["when_told_heavy"]
     assert "not a problem spec" in heavy["cannot"]
     assert "local_optimality" in heavy["local_trap"]
-    assert any("independent" in item.lower() for item in heavy["if_measurable"])
+    assert any("discard" in item.lower() for item in heavy["solution"])
+    assert any("algorithm famil" in item.lower() for item in heavy["solution"])
+    assert any("discard_and_rewrite" in item for item in book["loop"])
+    assert any("exhausted" in item for item in book["loop"])
     assert any("nearby" in item.lower() or "hot path" in item.lower() for item in book["do_not"])
 
 
@@ -70,6 +73,7 @@ def test_agent_brief_stop_on_agree() -> None:
     assert brief["stop"] is True
     assert brief["next"][0]["action"] == "stop"
     assert brief["ceiling"] == "residual only"
+    assert brief["next"][0]["exhausted"] is False
 
 
 def test_agent_brief_names_solver_to_rewrite() -> None:
@@ -99,6 +103,59 @@ def test_agent_brief_names_solver_to_rewrite() -> None:
     assert brief["next"][0]["action"] == "rewrite_formulation"
     assert brief["next"][0]["solver"] == "buggy"
     assert "smt_infeasible" in brief["kinds"]
+
+
+def test_agent_brief_discards_incumbent_on_local_opt() -> None:
+    score = ScoreVector(
+        problem_id="p",
+        verdict="disagree",
+        verification_strength="exchange+properties",
+        guarantee="g",
+        feasible={"near": True},
+        agreement=1.0,
+        objective={"near": 200.0},
+        optimality_status={"near": "optimal"},
+        claimed_optima_match=True,
+        counterexamples=[
+            {
+                "kind": "local_optimality",
+                "solver": "near",
+                "assignment": {"tables": 2.0, "chairs": 6.0},
+                "neighbor": {"tables": 2.0, "chairs": 5.0},
+            }
+        ],
+        runtime_ms={"near": 0.0},
+        tolerances=Tolerances(),
+        profile={"ceiling": "local neighborhood only"},
+    )
+    brief = agent_brief(score)
+    assert brief["stop"] is False
+    assert brief["next"][0]["action"] == "discard_and_rewrite"
+    assert brief["next"][0]["from"] == "dubito_spec"
+    assert brief["next"][0]["solver"] == "near"
+    assert "do not patch" in brief["repair"][0].lower()
+
+
+def test_agent_brief_exhausted_when_dual_closed() -> None:
+    score = ScoreVector(
+        problem_id="p",
+        verdict="agree",
+        verification_strength="exchange+dual",
+        guarantee="g",
+        feasible={"a": True},
+        agreement=1.0,
+        objective={"a": 220.0},
+        optimality_status={"a": "optimal"},
+        claimed_optima_match=True,
+        counterexamples=[],
+        runtime_ms={"a": 0.0},
+        tolerances=Tolerances(),
+        dual_closed={"a": True},
+        profile={"ceiling": "IP-optimal against this IR"},
+    )
+    brief = agent_brief(score)
+    assert brief["next"][0]["action"] == "stop"
+    assert brief["next"][0]["exhausted"] is True
 
 
 def test_call_tool_unknown_is_envelope() -> None:
