@@ -20,12 +20,16 @@ def test_load_furniture_problem() -> None:
     assert tuple(problem.variables) == ("tables", "chairs")
     assert problem.verification is not None
     assert len(problem.verification.constraints) == 3
+    assert problem.properties is not None
+    assert problem.properties.local_optimality is not None
+    assert problem.properties.resource_monotonicity is not None
+    assert problem.properties.resource_monotonicity.constraints == ("wood", "labor")
 
 
 def test_rejects_unknown_class() -> None:
     from dubito.problem import parse_problem
 
-    with pytest.raises(ProblemSpecError, match="not a Phase 1 class"):
+    with pytest.raises(ProblemSpecError, match="not a supported class"):
         parse_problem(
             {
                 "id": "x",
@@ -93,3 +97,26 @@ def test_z3_ir_matches_handwritten_spec() -> None:
     ]
     for point in points:
         assert z3_ir.check_assignment(point, tol).feasible == handwritten.check_assignment(point, tol).feasible
+
+
+def test_rejects_unknown_resource_constraint() -> None:
+    from dubito.problem import parse_problem
+
+    with pytest.raises(ProblemSpecError, match="unknown constraints"):
+        parse_problem(
+            {
+                "id": "x",
+                "class": "milp",
+                "sense": "max",
+                "variables": {"tables": {"kind": "integer", "lower": 0}},
+                "verification": {
+                    "constraints": [
+                        {"name": "c", "terms": {"tables": 1}, "op": "<=", "rhs": 1},
+                    ],
+                    "objective": {"terms": {"tables": 1}},
+                },
+                "properties": {
+                    "resource_monotonicity": {"constraints": ["missing"]},
+                },
+            }
+        )
