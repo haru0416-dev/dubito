@@ -20,6 +20,7 @@ def exchange_check(
     *,
     tol: Tolerances | None = None,
     problem_id: str | None = None,
+    solves: dict[str, SolveResult] | None = None,
 ) -> ScoreVector:
     """Substitute each solver's solution into every other formulation.
 
@@ -32,11 +33,16 @@ def exchange_check(
     tol = tol or Tolerances()
     pid = problem_id or formulations[0].problem_id
 
-    solves: dict[str, SolveResult] = {}
     notes: list[str] = []
+    if solves is None:
+        solves = {form.name: form.solve() for form in formulations}
+    else:
+        solves = dict(solves)
+        for form in formulations:
+            if form.name not in solves:
+                solves[form.name] = form.solve()
     for form in formulations:
-        result = form.solve()
-        solves[form.name] = result
+        result = solves[form.name]
         if result.error:
             notes.append(f"{form.name} error: {result.error}")
 
