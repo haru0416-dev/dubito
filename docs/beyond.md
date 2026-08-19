@@ -22,7 +22,7 @@ PLAN のリスク「スコープ肥大」に従い、実装スライスは次の
 | **P3b** | `sat`（CP-SAT ↔ Z3 を対等な検査） | プロファイルのみ。層は未実装 |
 | **P3c** | `blackbox` / Optuna、`symbolic_regression` / PySR | プロファイルのみ。optional extra 名だけ予約 |
 | **P3d** | `convex` の KKT、`multiobjective` の支配関係、`routing` | プロファイルのみ |
-| **P4** | 対話面（MCP ツール記述）とループ面（evaluator）。決定性 `seed` | ツール JSON と CLI。MCP SDK はまだ入れない |
+| **P4** | 対話面（MCP）とループ面（evaluator）。決定性 `seed` | stdio MCP、`dubito_spec`（IR なし）、compact `agent` brief。SDK 無し |
 | **P5** | アーカイブ → `dubito.lessons/v1` | distiller。プロンプト注入は外部 |
 
 ## クラスと検証天井
@@ -74,7 +74,7 @@ PLAN のリスク「スコープ肥大」に従い、実装スライスは次の
 
 1. **ライブラリ / CLI** — `verify`, `run_cegis`, `check`（既存）
 2. **OpenEvolve** — `dubito.evaluator.evaluate`（既存）。`combined_score` は `agree` のみ 1
-3. **対話 (MCP)** — ツールは CLI の別名。SDK 無しで `python -m dubito tools` が JSON descriptor を出す。実装は `dubito.faces.TOOLS`
+3. **対話 (MCP)** — `python -m dubito mcp` が JSON-RPC stdio。ツールは `dubito.faces`。手順は `docs/agent.md`。`dubito_spec` は検証 IR を返さない。
 
 決定性: 問題 YAML の `determinism.seed`（省略 0）は検証層（Hypothesis は既に derandomize）のシード。定式化は YAML を読まないので、SciPy 側の `seed` は各モジュールが自分で持つ。
 

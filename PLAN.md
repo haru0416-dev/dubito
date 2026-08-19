@@ -75,7 +75,7 @@ CEGISループ(反例→再定式化)、反例アーカイブの永続化、Hypo
 **Phase 4 — 二つの顔**
 MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性の保証(シード固定、許容誤差の明示)。
 
-**Phase 4 結果 (2026-08-19):** SDK 無し。`python -m dubito tools` が MCP 風 descriptor を出し、`dubito.faces.evaluate_tool` が既存の `verify` / CEGIS / archive / lessons / profile にディスパッチする。問題 YAML の `determinism.seed`（省略 0）を保持。OpenEvolve 側は既存 `dubito.evaluator`（`residual_ok` を追加）。
+**Phase 4 結果 (2026-08-19):** SDK 無しの stdio MCP（`python -m dubito mcp`）。ツールは `dubito_spec`（IR を出さない）→ `dubito_contract` → compact `dubito_check`（`agent.repair` / `ceiling`）。`call_tool` は ok/error 封筒。OpenEvolve 側は既存 `dubito.evaluator`。手順は `docs/agent.md`。
 
 **Phase 5 — 自己改善**
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
