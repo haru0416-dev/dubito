@@ -41,6 +41,7 @@ def test_playbook_states_the_loop() -> None:
     book = evaluate_tool("dubito_playbook")
     assert book["schema"] == "dubito.playbook/v1"
     assert "dubito_spec" in book["tools_order"]
+    assert "formulation code" in book["instructions"].lower()
     assert any("verification" in item.lower() for item in book["do_not"])
 
 

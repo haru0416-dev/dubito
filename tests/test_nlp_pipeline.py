@@ -23,10 +23,11 @@ def test_rosenbrock_pair_agrees_on_residual() -> None:
         load_problem(_PROBLEM),
     )
     assert score.verdict == "agree"
-    assert score.verification_strength == "exchange+residual+properties"
+    assert score.verification_strength == "code+exchange+residual+properties"
     assert score.layers["exchange"] == "ran"
     assert score.layers["residual"] == "ran"
     assert score.layers["properties"] == "ran"
+    assert score.layers["code"] == "ran"
     assert "smt" not in score.layers
     assert "dual" not in score.layers
     assert score.dual_bound is None

@@ -121,4 +121,4 @@ def test_cegis_real_solvers_replace_inverted() -> None:
     assert result.status == "converged"
     assert result.iterations == 2
     assert result.score.verdict == "agree"
-    assert result.score.verification_strength == "exchange+smt+dual+properties"
+    assert result.score.verification_strength == "code+exchange+smt+dual+properties"
