@@ -15,7 +15,7 @@ ConstraintOp = Literal["<=", ">=", "=="]
 
 
 class ProblemSpecError(ValueError):
-    """Raised when a problem YAML file does not match the Phase 1 schema."""
+    """Raised when a problem YAML file does not match the schema."""
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,27 @@ class VerificationIR:
 
 
 @dataclass(frozen=True)
+class LocalOptimalitySpec:
+    radius: int = 2
+    max_examples: int = 40
+
+
+@dataclass(frozen=True)
+class ResourceMonotonicitySpec:
+    constraints: tuple[str, ...]
+    max_increase: int = 5
+    max_examples: int = 20
+
+
+@dataclass(frozen=True)
+class PropertySpec:
+    """Optional Hypothesis / neighborhood checks. Consumed only by verification."""
+
+    local_optimality: LocalOptimalitySpec | None = None
+    resource_monotonicity: ResourceMonotonicitySpec | None = None
+
+
+@dataclass(frozen=True)
 class ProblemSpec:
     id: str
     problem_class: Literal["lp", "milp"]
@@ -57,6 +78,7 @@ class ProblemSpec:
     verification: VerificationIR | None
     schema: str = SCHEMA_V1
     source: str | None = None
+    properties: PropertySpec | None = None
 
     @property
     def variable_names(self) -> tuple[str, ...]:
@@ -79,7 +101,7 @@ def parse_problem(raw: Mapping[str, Any], *, source: str | None = None) -> Probl
     problem_class = _require_str(raw, "class")
     if problem_class not in SUPPORTED_CLASSES:
         raise ProblemSpecError(
-            f"class {problem_class!r} is not a Phase 1 class; supported: {sorted(SUPPORTED_CLASSES)}"
+            f"class {problem_class!r} is not a supported class; supported: {sorted(SUPPORTED_CLASSES)}"
         )
     sense = _require_str(raw, "sense")
     if sense not in {"min", "max"}:
@@ -88,6 +110,7 @@ def parse_problem(raw: Mapping[str, Any], *, source: str | None = None) -> Probl
     variables = _parse_variables(raw.get("variables"), problem_class=problem_class)  # type: ignore[arg-type]
     tolerances = _parse_tolerances(raw.get("tolerances"))
     verification = _parse_verification(raw.get("verification"), variables)
+    properties = _parse_properties(raw.get("properties"), verification)
     return ProblemSpec(
         id=problem_id,
         problem_class=problem_class,  # type: ignore[arg-type]
@@ -98,6 +121,7 @@ def parse_problem(raw: Mapping[str, Any], *, source: str | None = None) -> Probl
         verification=verification,
         schema=schema,
         source=source,
+        properties=properties,
     )
 
 
@@ -157,6 +181,64 @@ def _parse_verification(raw: object, variables: dict[str, VariableSpec]) -> Veri
         raise ProblemSpecError("verification.objective.terms is required")
     objective = _parse_terms(objective_raw["terms"], variables, where="objective")
     return VerificationIR(constraints=tuple(constraints), objective=objective)
+
+
+def _parse_properties(raw: object, verification: VerificationIR | None) -> PropertySpec | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict) or not raw:
+        raise ProblemSpecError("properties must be a mapping")
+    unknown = set(raw) - {"local_optimality", "resource_monotonicity"}
+    if unknown:
+        raise ProblemSpecError(f"unknown properties keys: {sorted(unknown)}")
+    local = _parse_local_optimality(raw.get("local_optimality"))
+    mono = _parse_resource_monotonicity(raw.get("resource_monotonicity"), verification)
+    if local is None and mono is None:
+        return None
+    return PropertySpec(local_optimality=local, resource_monotonicity=mono)
+
+
+def _parse_local_optimality(raw: object) -> LocalOptimalitySpec | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ProblemSpecError("properties.local_optimality must be a mapping")
+    radius = int(raw.get("radius", 2))
+    max_examples = int(raw.get("max_examples", 40))
+    if radius < 1:
+        raise ProblemSpecError("local_optimality.radius must be >= 1")
+    if max_examples < 1:
+        raise ProblemSpecError("local_optimality.max_examples must be >= 1")
+    return LocalOptimalitySpec(radius=radius, max_examples=max_examples)
+
+
+def _parse_resource_monotonicity(
+    raw: object, verification: VerificationIR | None
+) -> ResourceMonotonicitySpec | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ProblemSpecError("properties.resource_monotonicity must be a mapping")
+    names = raw.get("constraints")
+    if not isinstance(names, list) or not names or not all(isinstance(item, str) for item in names):
+        raise ProblemSpecError("resource_monotonicity.constraints must be a non-empty list of names")
+    if verification is None:
+        raise ProblemSpecError("resource_monotonicity requires a verification IR")
+    known = {constraint.name for constraint in verification.constraints}
+    missing = [name for name in names if name not in known]
+    if missing:
+        raise ProblemSpecError(f"resource_monotonicity unknown constraints: {missing}")
+    max_increase = int(raw.get("max_increase", 5))
+    max_examples = int(raw.get("max_examples", 20))
+    if max_increase < 0:
+        raise ProblemSpecError("resource_monotonicity.max_increase must be >= 0")
+    if max_examples < 1:
+        raise ProblemSpecError("resource_monotonicity.max_examples must be >= 1")
+    return ResourceMonotonicitySpec(
+        constraints=tuple(str(name) for name in names),
+        max_increase=max_increase,
+        max_examples=max_examples,
+    )
 
 
 def _parse_constraint(raw: object, variables: dict[str, VariableSpec]) -> LinearConstraint:

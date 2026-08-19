@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from dubito.archive import append_counterexamples
+from dubito.dual import DualReport, check_dual
 from dubito.exchange import exchange_check
 from dubito.model import (
+    DUAL_CLOSED_LP_GUARANTEE,
+    DUAL_CLOSED_MILP_GUARANTEE,
+    DUAL_GAP_GUARANTEE,
     EXCHANGE_SMT_GUARANTEE,
     SMT_GUARANTEE,
     Formulation,
@@ -12,6 +19,7 @@ from dubito.model import (
 )
 from dubito.numeric import numbers_close
 from dubito.problem import ProblemSpec
+from dubito.properties import PropertyReport, check_properties
 from dubito.z3check import LinearZ3Spec
 
 _SOLVED: frozenset[SolveStatus] = frozenset({"optimal", "feasible"})
@@ -22,8 +30,11 @@ def verify(
     problem: ProblemSpec,
     *,
     solves: dict[str, SolveResult] | None = None,
+    check_dual: bool = True,
+    check_properties: bool = True,
+    archive_path: str | Path | None = None,
 ) -> ScoreVector:
-    """Run exchange check (if 2+ formulations) then SMT against the verification IR."""
+    """Exchange check, then SMT, then dual bound, then Hypothesis properties."""
 
     if not formulations:
         raise ValueError("verify requires at least one formulation")
@@ -57,6 +68,24 @@ def verify(
         return score
 
     _attach_smt(score, solves, problem)
+
+    dual_report: DualReport | None = None
+    if check_dual:
+        dual_report = _attach_dual(score, solves, problem)
+
+    prop_report: PropertyReport | None = None
+    if check_properties and problem.properties is not None:
+        prop_report = _attach_properties(score, solves, problem)
+
+    _refresh_guarantee(score, problem, dual_report=dual_report, prop_report=prop_report)
+
+    if archive_path is not None:
+        append_counterexamples(
+            archive_path,
+            score,
+            problem,
+            [form.name for form in formulations],
+        )
     return score
 
 
@@ -155,6 +184,84 @@ def _attach_smt(
     elif not score.exchanges:
         if all(solves[name].status in _SOLVED for name in smt_feasible) and smt_ok:
             score.verdict = "agree"
+
+
+def _attach_dual(
+    score: ScoreVector, solves: dict[str, SolveResult], problem: ProblemSpec
+) -> DualReport:
+    claimed = {name: result.objective for name, result in solves.items()}
+    assignments = {
+        name: dict(result.assignment)
+        for name, result in solves.items()
+        if result.status in _SOLVED and result.assignment
+    }
+    report = check_dual(problem, claimed, assignments=assignments)
+    score.dual_bound = report.bound
+    score.dual_gap = dict(report.gap)
+    score.dual_closed = dict(report.closed)
+    score.notes.extend(report.notes)
+    _append_strength(score, "dual")
+    for name, exceeded in report.exceeded.items():
+        if not exceeded:
+            continue
+        score.counterexamples.append(
+            {
+                "kind": "dual_bound_exceeded",
+                "solver": name,
+                "claimed": claimed.get(name),
+                "dual_bound": report.bound,
+                "assignment": assignments.get(name, {}),
+            }
+        )
+        score.notes.append(
+            f"{name} claimed objective exceeds the verification-IR dual bound"
+        )
+        _downgrade(score, "disagree")
+    return report
+
+
+def _attach_properties(
+    score: ScoreVector, solves: dict[str, SolveResult], problem: ProblemSpec
+) -> PropertyReport:
+    report = check_properties(
+        problem, solves=solves, smt_feasible=score.smt_feasible
+    )
+    score.properties_ok = dict(report.ok)
+    score.notes.extend(report.notes)
+    score.counterexamples.extend(report.counterexamples)
+    _append_strength(score, "properties")
+    if any(value is False for value in report.ok.values()) or report.counterexamples:
+        _downgrade(score, "disagree")
+    return report
+
+
+def _refresh_guarantee(
+    score: ScoreVector,
+    problem: ProblemSpec,
+    *,
+    dual_report: DualReport | None,
+    prop_report: PropertyReport | None,
+) -> None:
+    if dual_report is None or dual_report.bound is None:
+        return
+    closed = [value for value in dual_report.closed.values() if value is not None]
+    any_exceeded = any(dual_report.exceeded.values())
+    if closed and all(closed) and not any_exceeded:
+        if problem.problem_class == "milp":
+            score.guarantee = DUAL_CLOSED_MILP_GUARANTEE
+        else:
+            score.guarantee = DUAL_CLOSED_LP_GUARANTEE
+    elif not any_exceeded:
+        score.guarantee = DUAL_GAP_GUARANTEE
+    if prop_report is not None and all(value is not False for value in prop_report.ok.values()):
+        if "Hypothesis properties" not in score.guarantee:
+            score.guarantee = score.guarantee.rstrip(".") + "; Hypothesis properties passed."
+
+
+def _append_strength(score: ScoreVector, extra: str) -> None:
+    parts = score.verification_strength.split("+")
+    if extra not in parts:
+        score.verification_strength = f"{score.verification_strength}+{extra}"
 
 
 def _downgrade(score: ScoreVector, verdict: Verdict) -> None:
