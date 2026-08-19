@@ -20,6 +20,8 @@ from dubito.model import (
 from dubito.numeric import numbers_close
 from dubito.problem import ProblemSpec
 from dubito.properties import PropertyReport, check_properties
+from dubito.residual import evaluate_residual
+from dubito.router import RoutedLayers, layer_pending, route
 from dubito.z3check import LinearZ3Spec
 
 _SOLVED: frozenset[SolveStatus] = frozenset({"optimal", "feasible"})
@@ -34,7 +36,7 @@ def verify(
     check_properties: bool = True,
     archive_path: str | Path | None = None,
 ) -> ScoreVector:
-    """Exchange check, then SMT, then dual bound, then Hypothesis properties."""
+    """Run the class router, then each pending verification layer."""
 
     if not formulations:
         raise ValueError("verify requires at least one formulation")
@@ -50,34 +52,63 @@ def verify(
             if form.name not in solves:
                 solves[form.name] = form.solve()
 
-    if len(formulations) >= 2:
+    routed = route(
+        problem,
+        check_dual=check_dual,
+        check_properties=check_properties,
+        n_formulations=len(formulations),
+    )
+
+    if layer_pending(routed, "exchange"):
         score = exchange_check(
             formulations,
             tol=problem.tolerances,
             problem_id=problem.id,
             solves=solves,
         )
+        routed.mark_ran("exchange")
+    elif len(formulations) >= 2:
+        score = exchange_check(
+            formulations,
+            tol=problem.tolerances,
+            problem_id=problem.id,
+            solves=solves,
+        )
+        score.notes.append(
+            f"exchange ran outside profile ({problem.problem_class}); treating as extra signal"
+        )
+        routed.mark_ran("exchange")
     else:
         score = _single_formulation_score(formulations[0], solves[formulations[0].name], problem)
 
     _annotate_interface(score, formulations, problem)
 
-    if problem.verification is None:
-        if any("variables" in note or "sense" in note for note in score.notes) and score.verdict == "agree":
-            score.verdict = "disagree"
-        return score
-
-    _attach_smt(score, solves, problem)
-
+    if layer_pending(routed, "smt"):
+        _attach_smt(score, solves, problem)
+        routed.mark_ran("smt")
+    if layer_pending(routed, "residual"):
+        _attach_residual(score, solves, problem)
+        routed.mark_ran("residual")
     dual_report: DualReport | None = None
-    if check_dual:
+    if layer_pending(routed, "dual"):
         dual_report = _attach_dual(score, solves, problem)
-
+        routed.mark_ran("dual")
     prop_report: PropertyReport | None = None
-    if check_properties and problem.properties is not None:
-        prop_report = _attach_properties(score, solves, problem)
+    if layer_pending(routed, "properties"):
+        witness = score.smt_feasible or score.residual_feasible
+        prop_report = _attach_properties(score, solves, problem, witness_feasible=witness)
+        routed.mark_ran("properties")
 
-    _refresh_guarantee(score, problem, dual_report=dual_report, prop_report=prop_report)
+    for layer, state in routed.status.items():
+        if state.startswith("skipped:") or state == "off":
+            score.notes.append(f"layer {layer}: {state}")
+
+    score.layers = dict(routed.status)
+    score.profile = routed.to_dict()
+    score.verification_strength = routed.strength()
+    _refresh_guarantee(
+        score, problem, dual_report=dual_report, prop_report=prop_report, routed=routed
+    )
 
     if archive_path is not None:
         append_counterexamples(
@@ -96,7 +127,7 @@ def _single_formulation_score(
     return ScoreVector(
         problem_id=problem.id,
         verdict="inconclusive",
-        verification_strength="smt",
+        verification_strength="none",
         guarantee=SMT_GUARANTEE,
         feasible={form.name: feasible},
         agreement=1.0,
@@ -168,10 +199,8 @@ def _attach_smt(
     score.smt_feasible = smt_feasible
     score.smt_objective_match = smt_objective_match
     if score.exchanges:
-        score.verification_strength = "exchange+smt"
         score.guarantee = EXCHANGE_SMT_GUARANTEE
     else:
-        score.verification_strength = "smt"
         score.guarantee = SMT_GUARANTEE
 
     smt_ok = bool(smt_feasible) and all(smt_feasible.values()) and all(
@@ -200,7 +229,6 @@ def _attach_dual(
     score.dual_gap = dict(report.gap)
     score.dual_closed = dict(report.closed)
     score.notes.extend(report.notes)
-    _append_strength(score, "dual")
     for name, exceeded in report.exceeded.items():
         if not exceeded:
             continue
@@ -220,16 +248,70 @@ def _attach_dual(
     return report
 
 
-def _attach_properties(
+def _attach_residual(
     score: ScoreVector, solves: dict[str, SolveResult], problem: ProblemSpec
+) -> None:
+    residual_feasible: dict[str, bool] = {}
+    residual_objective_match: dict[str, bool | None] = {}
+    for name, result in solves.items():
+        if result.status not in _SOLVED or not result.assignment:
+            residual_feasible[name] = False
+            residual_objective_match[name] = None
+            continue
+        check = evaluate_residual(problem, result.assignment, problem.tolerances)
+        obj_match: bool | None
+        if result.objective is None or check.objective is None:
+            obj_match = None
+        else:
+            obj_match = numbers_close(result.objective, check.objective, problem.tolerances)
+        residual_feasible[name] = bool(check.feasible and check.integrality_ok)
+        residual_objective_match[name] = obj_match
+        if not residual_feasible[name]:
+            score.counterexamples.append(
+                {
+                    "kind": "residual_infeasible",
+                    "solver": name,
+                    "assignment": dict(result.assignment),
+                    "violations": [item.to_dict() for item in check.violations],
+                }
+            )
+        elif obj_match is False:
+            score.counterexamples.append(
+                {
+                    "kind": "residual_objective_mismatch",
+                    "solver": name,
+                    "assignment": dict(result.assignment),
+                    "claimed": result.objective,
+                    "verification_objective": check.objective,
+                }
+            )
+    score.residual_feasible = residual_feasible
+    score.residual_objective_match = residual_objective_match
+    residual_ok = bool(residual_feasible) and all(residual_feasible.values()) and all(
+        match is not False for match in residual_objective_match.values()
+    )
+    if not residual_ok:
+        if score.verdict == "agree":
+            score.notes.append("solvers agree with each other but not with the residual IR")
+        _downgrade(score, "disagree")
+    elif not score.exchanges:
+        if all(solves[name].status in _SOLVED for name in residual_feasible) and residual_ok:
+            score.verdict = "agree"
+
+
+def _attach_properties(
+    score: ScoreVector,
+    solves: dict[str, SolveResult],
+    problem: ProblemSpec,
+    *,
+    witness_feasible: dict[str, bool] | None = None,
 ) -> PropertyReport:
     report = check_properties(
-        problem, solves=solves, smt_feasible=score.smt_feasible
+        problem, solves=solves, witness_feasible=witness_feasible or score.smt_feasible
     )
     score.properties_ok = dict(report.ok)
     score.notes.extend(report.notes)
     score.counterexamples.extend(report.counterexamples)
-    _append_strength(score, "properties")
     if any(value is False for value in report.ok.values()) or report.counterexamples:
         _downgrade(score, "disagree")
     return report
@@ -241,8 +323,14 @@ def _refresh_guarantee(
     *,
     dual_report: DualReport | None,
     prop_report: PropertyReport | None,
+    routed: RoutedLayers,
 ) -> None:
     if dual_report is None or dual_report.bound is None:
+        score.guarantee = (
+            f"{routed.profile.ceiling}. The verification IR must not be used to generate solver code."
+        )
+        if prop_report is not None and all(value is not False for value in prop_report.ok.values()):
+            score.guarantee = score.guarantee.rstrip(".") + "; Hypothesis properties passed."
         return
     closed = [value for value in dual_report.closed.values() if value is not None]
     any_exceeded = any(dual_report.exceeded.values())
@@ -256,12 +344,6 @@ def _refresh_guarantee(
     if prop_report is not None and all(value is not False for value in prop_report.ok.values()):
         if "Hypothesis properties" not in score.guarantee:
             score.guarantee = score.guarantee.rstrip(".") + "; Hypothesis properties passed."
-
-
-def _append_strength(score: ScoreVector, extra: str) -> None:
-    parts = score.verification_strength.split("+")
-    if extra not in parts:
-        score.verification_strength = f"{score.verification_strength}+{extra}"
 
 
 def _downgrade(score: ScoreVector, verdict: Verdict) -> None:
