@@ -19,14 +19,30 @@ CONTRACT_SCHEMA = "dubito.contract/v1"
 PLAYBOOK_SCHEMA = "dubito.playbook/v1"
 
 INSTRUCTIONS = (
-    "dubito verifies independently written solver formulations. "
-    "Call dubito_spec, then dubito_contract, write at least two modules from the "
-    "narrative only, then dubito_check. Never copy the YAML verification block "
-    "into solvers. On disagree, rewrite the named module using agent.repair. "
-    "agree is not a global proof; report agent.ceiling."
+    "dubito is a verifier of formulation code, not a solver. "
+    "Call dubito_spec, then dubito_contract, write at least two independent "
+    "modules from the narrative only, then dubito_check. Never copy the YAML "
+    "verification block into solvers. On disagree, rewrite the named module "
+    "using agent.repair. agree is not a global proof; report agent.ceiling."
 )
 
 KIND_HINTS: dict[str, str] = {
+    "code_import": (
+        "This module imports the verification IR or problem YAML loader. "
+        "Delete that import and rewrite constraints from the narrative."
+    ),
+    "code_peer_import": (
+        "This module imports another formulation. Write an independent encoding."
+    ),
+    "code_parse": (
+        "This module did not parse. Fix the Python, then check again."
+    ),
+    "code_no_factory": (
+        "Export formulation() -> Formulation. See dubito_contract."
+    ),
+    "code_name": (
+        "Do not name a module types.py."
+    ),
     "infeasible": (
         "A peer assignment is infeasible here. Rewrite this encoding from the "
         "narrative so the exchanged point is feasible, or the peer is wrong."
@@ -166,7 +182,7 @@ def playbook() -> dict[str, Any]:
             "dubito_spec with the problem YAML path",
             "dubito_contract (same problem) and pick two advisory backends",
             "Write two files exporting formulation(); constraints from narrative only",
-            "dubito_check with compact true (default); read result.agent",
+            "dubito_check inspects the source (no IR imports), then runs solvers; read result.agent",
             "On disagree: rewrite the named module using agent.repair; check again",
             "On agree: stop and quote agent.ceiling; do not claim more",
             "Optional: dubito_lessons on the archive after several disagreements",
@@ -274,6 +290,7 @@ def score_for_agent(score: ScoreVector, *, compact: bool = True) -> dict[str, An
             "claimed_optima_match": score.claimed_optima_match,
             "counterexamples": list(score.counterexamples),
             "layers": dict(score.layers),
+            "code_ok": dict(score.code_ok),
             "notes": list(score.notes)[:12],
             "agent": brief,
         }

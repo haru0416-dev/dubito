@@ -1,4 +1,4 @@
-"""dubito — cross-check solutions across independently formulated solvers.
+"""dubito — verify independently written formulation code.
 
 Working name. The product name is deliberately unset until the Phase 0
 hypothesis is confirmed and the Phase 1 shape is stable.
@@ -6,6 +6,7 @@ hypothesis is confirmed and the Phase 1 shape is stable.
 
 from dubito.agent import agent_brief, playbook, spec_for_agent
 from dubito.cegis import run_cegis
+from dubito.code import check_code
 from dubito.exchange import exchange_check
 from dubito.faces import call_tool, evaluate_tool, tool_descriptors
 from dubito.lessons import distill as distill_lessons
@@ -17,7 +18,7 @@ from dubito.score import score_to_dict
 from dubito.selfcheck import run_self_probe
 from dubito.model import Formulation, ScoreVector, SolveResult, Tolerances
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 __all__ = [
     "Formulation",
     "ScoreVector",
@@ -25,6 +26,7 @@ __all__ = [
     "Tolerances",
     "agent_brief",
     "call_tool",
+    "check_code",
     "distill_lessons",
     "evaluate_tool",
     "exchange_check",
