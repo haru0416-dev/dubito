@@ -17,7 +17,10 @@ python -m dubito check --problem probes/phase3/rosenbrock.yaml \
   probes/phase3/formulations/scipy_nelder_mead.py \
   probes/phase3/formulations/scipy_lbfgsb.py
 python -m dubito profile --problem probes/phase3/rosenbrock.yaml --formulations 2
+python -m dubito spec --problem probes/phase0/furniture.yaml
+python -m dubito playbook
 python -m dubito tools
+python -m dubito mcp   # stdio JSON-RPC; see docs/agent.md
 python -m dubito probe
 python -m dubito cegis --problem probes/phase0/furniture.yaml --max-iters 3 \
   --replace cvxpy_inverted_ratio.py=ortools_ok.py \
@@ -46,7 +49,14 @@ The router chooses **verification layers**, not which solver to run. Formulation
 
 ## Phase 4 / 5
 
-`python -m dubito tools` prints MCP-style descriptors (no SDK). `python -m dubito lessons --archive …` groups archive rows into `dubito.lessons/v1`. `determinism.seed` is on the problem spec.
+External models talk to dubito through tools. There is still no in-process LLM.
+
+- Playbook: [docs/agent.md](docs/agent.md)
+- `python -m dubito spec` / `contract` / `playbook` — narrative + module shape; **no verification IR**
+- `python -m dubito mcp` — JSON-RPC stdio MCP server (no SDK)
+- `dubito_check` via tools defaults to compact JSON with `agent.next` / `agent.repair` / `agent.ceiling`
+- `python -m dubito lessons --archive …` → `dubito.lessons/v1`
+- `determinism.seed` is on the problem spec
 
 ## Score vector
 
@@ -59,12 +69,13 @@ Tolerances: [docs/tolerances.md](docs/tolerances.md).
 ## Layout
 
 ```
-src/dubito/           exchange, SMT, dual, residual, router, CEGIS, archive, lessons, faces, CLI, evaluator
+src/dubito/           exchange, SMT, dual, residual, router, CEGIS, archive, lessons, faces, agent, mcp, CLI, evaluator
 probes/phase0/        furniture MILP, independent formulations, planted bugs
 probes/phase3/        Rosenbrock NLP, SciPy formulations, shifted-valley bug
 docs/problem-schema.md
 docs/archive.md
 docs/beyond.md
+docs/agent.md         how an external model should call the tools
 examples/openevolve/  evaluate(program_path) re-export
 ```
 
