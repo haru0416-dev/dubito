@@ -30,7 +30,7 @@ def load_formulation_here(path: str | Path) -> Formulation:
 
 
 def load_formulation(path: str | Path, *, sandbox: bool = True) -> Formulation:
-    """Load a formulation. Default is a subprocess sandbox so native solver libs do not mix.
+    """Load a formulation. Default is a subprocess sandbox so native libs do not mix.
 
     CVXPY's optional HiGHS and OR-Tools' bundled HiGHS cannot share a process.
     """
