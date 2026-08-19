@@ -35,6 +35,15 @@ def evaluate(program_path: str) -> dict[str, float]:
     ) else 1.0
     props = list(score.properties_ok.values())
     properties_ok = 1.0 if not props or all(item is not False for item in props) else 0.0
+    residual_values = list(score.residual_feasible.values())
+    residual_obj = list(score.residual_objective_match.values())
+    residual_ok = 1.0
+    if residual_values:
+        residual_ok = (
+            1.0
+            if all(residual_values) and all(item is not False for item in residual_obj)
+            else 0.0
+        )
     return {
         "combined_score": 1.0 if score.verdict == "agree" else 0.0,
         "agreement": float(score.agreement),
@@ -43,6 +52,7 @@ def evaluate(program_path: str) -> dict[str, float]:
         "smt_ok": smt_ok,
         "dual_ok": dual_ok,
         "properties_ok": properties_ok,
+        "residual_ok": residual_ok,
         "n_counterexamples": float(len(score.counterexamples)),
     }
 
