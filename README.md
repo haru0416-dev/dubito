@@ -2,48 +2,46 @@
 
 A tool that **doubts solutions**.
 
-Given a mathematical problem, independently formulate it in multiple solvers, swap the solutions, and emit a deterministic score vector. The point is not to win an accuracy contest. The point is to make wrong answers detectable — including as an LLM-free fitness function for evolutionary agents.
+Given a mathematical problem, independently formulate it in multiple solvers, swap the solutions, check them against a spec-derived Z3 encoding, and emit a deterministic score vector. The point is not to win an accuracy contest. The point is to make wrong answers detectable — including as an LLM-free fitness function for evolutionary agents.
 
-The product name is unset on purpose. This repository exists to run Phase 0 of [PLAN.md](PLAN.md).
-
-## Phase 0 hypothesis
-
-> If two solvers are formulated independently, disagreement under solution exchange detects formulation bugs.
-
-The probe does **not** call an LLM (that wiring is still an open decision in the plan). It uses two independently written encodings of one MILP plus three planted bugs.
+The product name is unset on purpose. Phase 0 confirmed the exchange-check hypothesis. Phase 1 is the LP/MILP MVP.
 
 ```bash
 pip install -e ".[dev]"
 # system GLPK is required for CVXPY MILP (libglpk). Do not install `highspy`
 # alongside `ortools`; the two ship incompatible HiGHS libraries.
+python -m dubito check --problem probes/phase0/furniture.yaml \
+  probes/phase0/formulations/cvxpy_ok.py \
+  probes/phase0/formulations/ortools_ok.py
 python -m dubito probe
 python -m pytest
 ```
 
-Expected Phase 0 outcome: `hypothesis_holds: true`. Confirmed 2026-08-19; see [probes/phase0/REPORT.md](probes/phase0/REPORT.md).
+## Phase 0
 
-## What is in the score vector
+Independent CVXPY vs OR-Tools encodings of one MILP, plus planted bugs. Hypothesis holds. See [probes/phase0/REPORT.md](probes/phase0/REPORT.md).
 
-`verdict`, `agreement`, per-solver feasibility, claimed objectives, optimality status, counterexamples, runtimes, explicit `guarantee`. Natural language is not the output. This dict is what `dubito.evaluator.evaluate` turns into OpenEvolve metrics (`combined_score` is 1 only on `agree`).
+## Phase 1
 
-Tolerances are specified in [docs/tolerances.md](docs/tolerances.md). Agreement is not a proof of optimality; correlated bugs in every backend are invisible to exchange check. Z3 encodings live on a separate path (`probes/phase0/z3_spec.py`) and are the start of the verification layer.
+Structured input is `dubito.problem/v1` YAML ([docs/problem-schema.md](docs/problem-schema.md)). The `verification` block is a linear IR for Z3 only — formulation modules must not compile from it. `verify()` runs exchange check then SMT. Correlated bugs (the same mistake in every backend) survive exchange and fail SMT.
+
+LLM calls are out of process: an external agent writes `formulation()` modules. This tool does not call a model.
+
+## Score vector
+
+`verdict`, `agreement`, per-solver feasibility, claimed objectives, optimality status, `smt_feasible`, `smt_objective_match`, counterexamples, runtimes, explicit `guarantee` and `verification_strength` (`exchange`, `smt`, or `exchange+smt`). Natural language is not the output.
+
+`dubito.evaluator.evaluate` maps this to OpenEvolve metrics (`combined_score` is 1 only on `agree`). Optional env: `DUBITO_PROBLEM`, `DUBITO_PEER_FORMULATIONS`.
+
+Tolerances: [docs/tolerances.md](docs/tolerances.md).
 
 ## Layout
 
 ```
-src/dubito/           exchange checker, score vector, CLI, evaluator adapter
-probes/phase0/        one narrative MILP, two OK formulations, three planted bugs
+src/dubito/           exchange, SMT pipeline, score vector, CLI, evaluator
+probes/phase0/        furniture MILP, independent formulations, planted bugs
+docs/problem-schema.md
 examples/openevolve/  evaluate(program_path) re-export
 ```
 
-Formulation modules export `formulation()` and must not compile from a shared constraint IR. Canonical variable names are the only shared surface. `python -m dubito check` runs each formulation in a subprocess so CVXPY/HiGHS and OR-Tools never share an address space.
-
-## CLI
-
-```bash
-python -m dubito check \
-  probes/phase0/formulations/cvxpy_ok.py \
-  probes/phase0/formulations/ortools_ok.py
-```
-
-Exit 0 on `agree`, 1 otherwise. JSON on stdout.
+Each formulation runs in a subprocess so CVXPY/HiGHS and OR-Tools never share an address space.
