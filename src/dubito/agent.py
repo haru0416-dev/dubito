@@ -24,8 +24,9 @@ INSTRUCTIONS = (
     "modules from the narrative only, then dubito_check. Never copy the YAML "
     "verification block into solvers. On disagree, rewrite the named module "
     "using agent.repair. agree is not a global proof; report agent.ceiling. "
-    "A complaint that something is slow is not a spec: do not only patch the "
-    "nearby hot path."
+    "A complaint that something is slow is not a spec. Escape local edits: "
+    "write a second encoding from a different algorithm family; on "
+    "local_optimality discard the incumbent and restart from dubito_spec."
 )
 
 KIND_HINTS: dict[str, str] = {
@@ -78,14 +79,17 @@ KIND_HINTS: dict[str, str] = {
         "too loose (missing constraint) or the objective is wrong."
     ),
     "local_optimality": (
-        "A nearby IR-feasible point is better. The claimed point is not locally "
-        "optimal against the witness."
+        "A nearby IR-feasible point is better. Discard this encoding. "
+        "Call dubito_spec and write a new module from the narrative; "
+        "do not patch the incumbent."
     ),
     "resource_monotonicity": (
         "The verification IR itself failed resource monotonicity. Do not patch "
         "formulations; the spec witness is wrong."
     ),
 }
+
+_DISCARD_KINDS = frozenset({"local_optimality", "code_peer_import"})
 
 _DO_NOT = (
     "Do not import, parse, or copy the YAML verification block into formulations.",
@@ -171,8 +175,9 @@ def formulation_contract(
         ],
         "skeleton": _skeleton(primary, problem_id, names, sense, kinds),
         "second_encoding": (
-            "Write a second module with a different adapter (or a different "
-            "algorithm) from the same narrative. Independent bugs are the point."
+            "Write a second module from a different algorithm family "
+            "(different adapter or a different model), same narrative. "
+            "Two edits of the same hot path are one encoding, not two."
         ),
     }
 
@@ -186,8 +191,8 @@ def playbook() -> dict[str, Any]:
             "dubito_contract (same problem) and pick two advisory backends",
             "Write two files exporting formulation(); constraints from narrative only",
             "dubito_check inspects the source (no IR imports), then runs solvers; read result.agent",
-            "On disagree: rewrite the named module using agent.repair; check again",
-            "On agree: stop and quote agent.ceiling; do not claim more",
+            "On disagree: follow agent.next (rewrite_formulation, or discard_and_rewrite from dubito_spec); check again",
+            "On agree: stop and quote agent.ceiling; next.exhausted means the dual of this IR is closed",
             "Optional: dubito_lessons on the archive after several disagreements",
         ],
         "tools_order": [
@@ -205,20 +210,20 @@ def playbook() -> dict[str, Any]:
         ),
         "when_told_heavy": {
             "cannot": (
-                "dubito does not derive a faster design from 'this feature is "
+                "dubito does not invent a faster design from 'this feature is "
                 "slow'. That sentence is not a problem spec."
             ),
             "local_trap": (
                 "Models almost always patch the nearby hot path (cache, fewer "
-                "Hypothesis examples, skip a layer). That is the same failure "
-                "mode as local_optimality: a neighbor looks better, the dual "
-                "or residual ceiling was never asked."
+                "Hypothesis examples, skip a layer). That is local_optimality."
             ),
-            "if_measurable": [
-                "Write what heavy means as an objective and what must not break as constraints (narrative only).",
-                "Encode two independent formulations of that tradeoff, not two edits of the same function.",
-                "dubito_check: a better IR-feasible neighbor is disagree; beating the dual is a missing constraint.",
-                "agree still only means the class ceiling (often local / residual / dual of this IR).",
+            "solution": [
+                "Stop editing the hot path.",
+                "dubito_spec: objective = what heavy means; constraints = what must not break.",
+                "Write two modules from different algorithm families, not two caches on the same loop.",
+                "dubito_check. On local_optimality: discard the incumbent (agent.next action discard_and_rewrite).",
+                "On agree and dual_closed: stop; this IR has no better feasible point.",
+                "On agree with a remaining dual gap or an NLP ceiling: stop claiming more; you may still be local.",
             ],
             "do_not": [
                 "Skip verification layers as the only speedup without a spec.",
@@ -259,19 +264,19 @@ def agent_brief(
             repair.append(f"{solver}: {hint}")
             if solver not in seen_solvers and score.verdict != "agree":
                 seen_solvers.add(solver)
-                next_actions.append(
-                    {
-                        "action": "rewrite_formulation",
-                        "solver": solver,
-                        "kind": kind,
-                        "reason": hint,
-                    }
-                )
+                next_actions.append(_next_action(kind, solver, hint))
         if not _counterexample_solvers(item):
             repair.append(hint)
 
     if score.verdict == "agree":
-        next_actions = [{"action": "stop", "reason": "verdict is agree", "report": ceiling}]
+        next_actions = [
+            {
+                "action": "stop",
+                "reason": "verdict is agree",
+                "report": ceiling,
+                "exhausted": _dual_exhausted(score),
+            }
+        ]
     elif score.verdict == "error":
         errored = [name for name, status in score.optimality_status.items() if status == "error"]
         next_actions = [
@@ -322,6 +327,28 @@ def score_for_agent(score: ScoreVector, *, compact: bool = True) -> dict[str, An
     payload = score.to_dict()
     payload["agent"] = brief
     return payload
+
+
+def _next_action(kind: str, solver: str, hint: str) -> dict[str, Any]:
+    if kind in _DISCARD_KINDS:
+        return {
+            "action": "discard_and_rewrite",
+            "solver": solver,
+            "kind": kind,
+            "from": "dubito_spec",
+            "reason": hint,
+        }
+    return {
+        "action": "rewrite_formulation",
+        "solver": solver,
+        "kind": kind,
+        "reason": hint,
+    }
+
+
+def _dual_exhausted(score: ScoreVector) -> bool:
+    closed = [value for value in score.dual_closed.values() if value is not None]
+    return bool(closed) and all(closed)
 
 
 def _variable_public(spec: VariableSpec) -> dict[str, Any]:
