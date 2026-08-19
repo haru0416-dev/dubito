@@ -8,7 +8,7 @@ from z3 import And, ArithRef, BoolRef, Int, Optimize, Real, RealVal, Solver, sat
 from dubito.ir import evaluate_ir
 from dubito.numeric import as_number, nearest_int
 from dubito.model import CheckResult, ConstraintViolation, Tolerances
-from dubito.problem import ProblemSpec
+from dubito.problem import ProblemSpec, VerificationIR, as_linear_ir
 
 
 @dataclass
@@ -101,8 +101,9 @@ class LinearZ3Spec(Z3Spec):
     """Z3 encoding of a ProblemSpec verification IR. Not a solver formulation."""
 
     def __init__(self, problem: ProblemSpec) -> None:
-        if problem.verification is None:
-            raise ValueError(f"problem {problem.id} has no verification IR")
+        ir = as_linear_ir(problem)
+        if ir is None:
+            raise ValueError(f"problem {problem.id} has no linear verification IR")
         self.problem = problem
         self.problem_id = problem.id
         self.variables = problem.variable_names
@@ -120,7 +121,7 @@ class LinearZ3Spec(Z3Spec):
                 solver.add(z3var >= _z3_num(spec.lower))
             if spec.upper is not None:
                 solver.add(z3var <= _z3_num(spec.upper))
-        ir = self.problem.verification
+        ir = as_linear_ir(self.problem)
         assert ir is not None
         for constraint in ir.constraints:
             expr = None
