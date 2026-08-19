@@ -40,3 +40,11 @@ verification:
       rhs: 0
   objective:
     terms: {tables: 50, chairs: 20}
+properties:
+  local_optimality:
+    radius: 2
+    max_examples: 40
+  resource_monotonicity:
+    constraints: [wood, labor]
+    max_increase: 5
+    max_examples: 20
