@@ -145,6 +145,10 @@ class ScoreVector:
     dual_gap: dict[str, float | None] = field(default_factory=dict)
     dual_closed: dict[str, bool | None] = field(default_factory=dict)
     properties_ok: dict[str, bool | None] = field(default_factory=dict)
+    residual_feasible: dict[str, bool] = field(default_factory=dict)
+    residual_objective_match: dict[str, bool | None] = field(default_factory=dict)
+    layers: dict[str, str] = field(default_factory=dict)
+    profile: dict[str, object] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -168,6 +172,10 @@ class ScoreVector:
             "dual_gap": dict(self.dual_gap),
             "dual_closed": dict(self.dual_closed),
             "properties_ok": dict(self.properties_ok),
+            "residual_feasible": dict(self.residual_feasible),
+            "residual_objective_match": dict(self.residual_objective_match),
+            "layers": dict(self.layers),
+            "profile": dict(self.profile),
         }
 
 
