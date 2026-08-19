@@ -9,13 +9,10 @@ from dubito.faces import evaluate_tool, tool_descriptors
 
 def test_tool_descriptors_cover_check_and_profile() -> None:
     names = {item["name"] for item in tool_descriptors()}
-    assert names == {
-        "dubito_check",
-        "dubito_cegis",
-        "dubito_archive",
-        "dubito_lessons",
-        "dubito_profile",
-    }
+    assert "dubito_check" in names
+    assert "dubito_spec" in names
+    assert "dubito_playbook" in names
+    assert "dubito_profile" in names
     for item in tool_descriptors():
         assert "inputSchema" in item
         assert item["inputSchema"]["type"] == "object"
@@ -52,6 +49,16 @@ def test_cli_tools_prints_json(capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert isinstance(payload, list)
     assert payload[0]["name"].startswith("dubito_")
+
+
+def test_cli_spec_hides_ir(capsys) -> None:
+    yaml_path = Path(__file__).resolve().parents[1] / "probes/phase0/furniture.yaml"
+    assert main(["spec", "--problem", str(yaml_path), "--indent", "0"]) == 0
+    out = capsys.readouterr().out
+    payload = json.loads(out)
+    assert payload["id"] == "furniture-workshop-v1"
+    assert "constraints" not in payload
+    assert '"terms"' not in out
 
 
 def test_cli_profile_furniture(capsys) -> None:
