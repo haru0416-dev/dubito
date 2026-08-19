@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
-from z3 import And, ArithRef, BoolRef, Int, Optimize, Real, Solver, sat, unknown, unsat
+from z3 import And, ArithRef, BoolRef, Int, Optimize, Real, RealVal, Solver, sat, unknown, unsat
 
+from dubito.ir import evaluate_ir
 from dubito.numeric import as_number, nearest_int
 from dubito.model import CheckResult, ConstraintViolation, Tolerances
+from dubito.problem import ProblemSpec
 
 
 @dataclass
@@ -93,6 +95,71 @@ class Z3Spec:
         if result == unsat:
             return Z3CheckResult(feasible=False, status="unsat", model=None)
         return Z3CheckResult(feasible=False, status=str(result), model=None, detail="unknown")
+
+
+class LinearZ3Spec(Z3Spec):
+    """Z3 encoding of a ProblemSpec verification IR. Not a solver formulation."""
+
+    def __init__(self, problem: ProblemSpec) -> None:
+        if problem.verification is None:
+            raise ValueError(f"problem {problem.id} has no verification IR")
+        self.problem = problem
+        self.problem_id = problem.id
+        self.variables = problem.variable_names
+
+    def encode(self) -> tuple[Solver, dict[str, ArithRef]]:
+        solver = Solver()
+        var_map: dict[str, ArithRef] = {}
+        for name, spec in self.problem.variables.items():
+            if spec.kind in {"integer", "binary"}:
+                z3var: ArithRef = Int(name)
+            else:
+                z3var = Real(name)
+            var_map[name] = z3var
+            if spec.lower is not None:
+                solver.add(z3var >= _z3_num(spec.lower))
+            if spec.upper is not None:
+                solver.add(z3var <= _z3_num(spec.upper))
+        ir = self.problem.verification
+        assert ir is not None
+        for constraint in ir.constraints:
+            expr = None
+            for var_name, coeff in constraint.terms.items():
+                term = _z3_num(coeff) * var_map[var_name]
+                expr = term if expr is None else expr + term
+            assert expr is not None
+            rhs = _z3_num(constraint.rhs)
+            if constraint.op == "<=":
+                solver.add(expr <= rhs)
+            elif constraint.op == ">=":
+                solver.add(expr >= rhs)
+            else:
+                solver.add(expr == rhs)
+        return solver, var_map
+
+    def check_assignment(
+        self, assignment: Mapping[str, float], tol: Tolerances
+    ) -> CheckResult:
+        ir_check = evaluate_ir(self.problem, assignment, tol)
+        z3_check = super().check_assignment(assignment, tol)
+        violations = list(ir_check.violations)
+        if ir_check.feasible and not z3_check.feasible:
+            violations.extend(z3_check.violations)
+        return CheckResult(
+            feasible=ir_check.feasible and z3_check.feasible,
+            objective=ir_check.objective,
+            violations=violations,
+            integrality_ok=ir_check.integrality_ok,
+        )
+
+
+def _z3_num(value: object) -> ArithRef | int:
+    from fractions import Fraction
+
+    frac = value if isinstance(value, Fraction) else Fraction(str(value))
+    if frac.denominator == 1:
+        return int(frac.numerator)
+    return RealVal(frac.numerator) / RealVal(frac.denominator)
 
 
 def int_var(name: str) -> ArithRef:

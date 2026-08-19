@@ -76,6 +76,9 @@ def test_score_vector_has_required_keys() -> None:
         "counterexamples",
         "runtime_ms",
         "tolerances",
+        "smt_feasible",
+        "smt_objective_match",
     ):
         assert key in payload
     assert payload["verification_strength"] == "exchange"
+    assert payload["smt_feasible"] == {}
