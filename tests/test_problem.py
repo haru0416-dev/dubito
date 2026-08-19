@@ -33,7 +33,7 @@ def test_rejects_unknown_class() -> None:
         parse_problem(
             {
                 "id": "x",
-                "class": "convex",
+                "class": "not-a-class",
                 "sense": "min",
                 "variables": {"x": {"kind": "continuous"}},
             }

@@ -19,6 +19,10 @@ def test_ok_pair_agrees_with_smt() -> None:
     )
     assert score.verdict == "agree"
     assert score.verification_strength == "exchange+smt+dual+properties"
+    assert score.layers["exchange"] == "ran"
+    assert score.layers["smt"] == "ran"
+    assert score.layers["dual"] == "ran"
+    assert score.layers["properties"] == "ran"
     assert score.smt_feasible == {"cvxpy_ok": True, "ortools_ok": True}
     assert all(score.smt_objective_match.values())
 
@@ -94,3 +98,7 @@ def test_flags_skip_dual_and_properties() -> None:
     assert score.verification_strength == "exchange+smt"
     assert score.dual_bound is None
     assert score.properties_ok == {}
+    assert score.layers["dual"] == "off"
+    assert score.layers["properties"] == "off"
+    assert score.layers["exchange"] == "ran"
+    assert score.layers["smt"] == "ran"

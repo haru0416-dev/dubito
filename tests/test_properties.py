@@ -53,7 +53,7 @@ def test_local_optimality_skips_smt_infeasible() -> None:
         smt_feasible={"bad": False},
     )
     assert report.ok["local_optimality"] is None
-    assert any("no SMT-feasible candidate" in note for note in report.notes)
+    assert any("no IR-feasible candidate" in note for note in report.notes)
 
 
 def test_resource_monotonicity_uses_hypothesis_on_ir() -> None:
@@ -82,3 +82,39 @@ def test_resource_monotonicity_flags_when_relaxation_worsens(monkeypatch) -> Non
     report = check_properties(problem, solves={}, smt_feasible={})
     assert report.ok["resource_monotonicity"] is False
     assert any(item["kind"] == "resource_monotonicity" for item in report.counterexamples)
+
+
+def test_continuous_local_optimality_accepts_rosenbrock_min() -> None:
+    from dubito.problem import parse_problem
+
+    problem = parse_problem(
+        {
+            "id": "rosenbrock-v1",
+            "class": "nlp",
+            "sense": "min",
+            "variables": {
+                "x": {"kind": "continuous"},
+                "y": {"kind": "continuous"},
+            },
+            "verification": {
+                "kind": "residual",
+                "objective": {"expr": "(1 - x)**2 + 100 * (y - x**2)**2"},
+            },
+            "properties": {"local_optimality": {"radius": 0.05, "max_examples": 8}},
+        }
+    )
+    report = check_properties(
+        problem,
+        solves={
+            "ok": SolveResult(
+                solver="ok",
+                status="optimal",
+                assignment={"x": 1.0, "y": 1.0},
+                objective=0.0,
+                runtime_ms=0.0,
+            )
+        },
+        witness_feasible={"ok": True},
+    )
+    assert report.ok["local_optimality"] is True
+    assert report.counterexamples == []
