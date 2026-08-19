@@ -27,11 +27,12 @@ class FakeFormulation(Formulation):
         rejected: dict[tuple[float, ...], str] | None = None,
         objective_at: dict[tuple[float, ...], float] | None = None,
         error: str | None = None,
+        problem_id: str = "fake",
     ) -> None:
         self.name = name
         self.variables = tuple(assignment)
         self.sense = sense
-        self.problem_id = "fake"
+        self.problem_id = problem_id
         self._assignment = assignment
         self._objective = objective
         self._status = status

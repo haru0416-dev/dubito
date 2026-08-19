@@ -29,12 +29,20 @@ def evaluate(program_path: str) -> dict[str, float]:
     smt_ok = 1.0
     if smt_values:
         smt_ok = 1.0 if all(smt_values) and all(item is not False for item in smt_obj) else 0.0
+    dual_ok = 0.0 if any(
+        isinstance(item, dict) and item.get("kind") == "dual_bound_exceeded"
+        for item in score.counterexamples
+    ) else 1.0
+    props = list(score.properties_ok.values())
+    properties_ok = 1.0 if not props or all(item is not False for item in props) else 0.0
     return {
         "combined_score": 1.0 if score.verdict == "agree" else 0.0,
         "agreement": float(score.agreement),
         "all_feasible": 1.0 if score.feasible and all(score.feasible.values()) else 0.0,
         "optima_match": 1.0 if score.claimed_optima_match else 0.0,
         "smt_ok": smt_ok,
+        "dual_ok": dual_ok,
+        "properties_ok": properties_ok,
         "n_counterexamples": float(len(score.counterexamples)),
     }
 

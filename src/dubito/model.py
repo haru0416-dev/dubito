@@ -141,6 +141,10 @@ class ScoreVector:
     exchanges: list[ExchangeDirection] = field(default_factory=list)
     smt_feasible: dict[str, bool] = field(default_factory=dict)
     smt_objective_match: dict[str, bool | None] = field(default_factory=dict)
+    dual_bound: float | None = None
+    dual_gap: dict[str, float | None] = field(default_factory=dict)
+    dual_closed: dict[str, bool | None] = field(default_factory=dict)
+    properties_ok: dict[str, bool | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -160,6 +164,10 @@ class ScoreVector:
             "exchanges": [e.to_dict() for e in self.exchanges],
             "smt_feasible": dict(self.smt_feasible),
             "smt_objective_match": dict(self.smt_objective_match),
+            "dual_bound": None if self.dual_bound is None else float(self.dual_bound),
+            "dual_gap": dict(self.dual_gap),
+            "dual_closed": dict(self.dual_closed),
+            "properties_ok": dict(self.properties_ok),
         }
 
 
@@ -205,4 +213,23 @@ EXCHANGE_SMT_GUARANTEE = (
     "encoding, and claimed objectives match the verification objective. This is "
     "not a dual/optimality certificate. The verification IR must not be used to "
     "generate solver code."
+)
+
+DUAL_CLOSED_MILP_GUARANTEE = (
+    "claimed integer-feasible objective matches the dual of the verification-IR "
+    "LP relaxation, so the point is optimal for the IP as well. This is still "
+    "not a solver-generated certificate: the dual is built from the spec IR, "
+    "which must not be used to generate solver code."
+)
+
+DUAL_CLOSED_LP_GUARANTEE = (
+    "claimed objective matches the dual of the verification-IR LP, giving a "
+    "strong-duality certificate against the spec. The verification IR must not "
+    "be used to generate solver code."
+)
+
+DUAL_GAP_GUARANTEE = (
+    "LP-relaxation dual bound from the verification IR only. A gap remains, so "
+    "this is not a MILP optimality certificate. The verification IR must not be "
+    "used to generate solver code."
 )
