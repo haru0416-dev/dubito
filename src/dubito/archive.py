@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from dubito.model import ScoreVector
-from dubito.problem import ProblemSpec, VerificationIR
+from dubito.problem import ProblemSpec, ResidualIR, VerificationIR
 
 ARCHIVE_SCHEMA = "dubito.archive/v1"
 
@@ -22,10 +22,26 @@ def narrative_hash(narrative: str) -> str:
     return _sha256(narrative)
 
 
-def verification_hash(ir: VerificationIR | None) -> str:
+def verification_hash(ir: VerificationIR | ResidualIR | None) -> str:
     if ir is None:
         return _sha256("")
+    if isinstance(ir, ResidualIR):
+        payload = {
+            "kind": "residual",
+            "constraints": [
+                {
+                    "name": constraint.name,
+                    "expr": constraint.expr,
+                    "op": constraint.op,
+                    "rhs": str(constraint.rhs),
+                }
+                for constraint in ir.constraints
+            ],
+            "objective": ir.objective_expr,
+        }
+        return _sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     payload = {
+        "kind": "linear",
         "constraints": [
             {
                 "name": constraint.name,

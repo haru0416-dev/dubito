@@ -1,0 +1,33 @@
+schema: dubito.problem/v1
+id: rosenbrock-v1
+class: nlp
+sense: min
+# Variable names are the exchange interface.
+# The residual block is consumed only by the verifier.
+# Solver formulation modules must not import this file.
+variables:
+  x:
+    kind: continuous
+  y:
+    kind: continuous
+narrative: |
+  Minimize the Rosenbrock banana function
+  f(x, y) = (1 - x)^2 + 100 (y - x^2)^2.
+  The problem is unconstrained. The known minimizer is (x, y) = (1, 1)
+  with objective 0. This is a local (and global) minimum, not a dual certificate.
+determinism:
+  seed: 0
+tolerances:
+  primal_feasibility: 1.0e-4
+  objective_abs: 1.0e-4
+  objective_rel: 1.0e-4
+  integrality: 1.0e-8
+verification:
+  kind: residual
+  constraints: []
+  objective:
+    expr: "(1 - x)**2 + 100 * (y - x**2)**2"
+properties:
+  local_optimality:
+    radius: 0.05
+    max_examples: 16

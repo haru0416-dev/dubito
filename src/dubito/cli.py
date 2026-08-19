@@ -7,6 +7,8 @@ from pathlib import Path
 
 from dubito.cegis import PathMapReformulator, parse_replacements, run_cegis
 from dubito.exchange import exchange_check
+from dubito.faces import evaluate_tool, tool_descriptors
+from dubito.lessons import distill_path
 from dubito.load import load_formulation
 from dubito.pipeline import verify
 from dubito.problem import load_problem
@@ -24,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    check = sub.add_parser("check", help="Verify formulation modules (exchange, SMT, dual, properties)")
+    check = sub.add_parser("check", help="Verify formulation modules (router selects layers)")
     check.add_argument("paths", nargs="+", type=Path, help="Python modules exporting formulation()")
     check.add_argument(
         "--problem",
@@ -57,6 +59,26 @@ def main(argv: list[str] | None = None) -> int:
     cegis.add_argument("--no-properties", action="store_true")
     cegis.add_argument("--indent", type=int, default=2)
 
+    profile = sub.add_parser("profile", help="Dump the class verification route (no solvers)")
+    profile.add_argument("--problem", type=Path, required=True)
+    profile.add_argument(
+        "--formulations",
+        type=int,
+        default=0,
+        dest="n_formulations",
+        help="How many formulation modules would be passed to check (affects exchange)",
+    )
+    profile.add_argument("--no-dual", action="store_true")
+    profile.add_argument("--no-properties", action="store_true")
+    profile.add_argument("--indent", type=int, default=2)
+
+    tools = sub.add_parser("tools", help="Print MCP-style tool descriptors (no SDK)")
+    tools.add_argument("--indent", type=int, default=2)
+
+    lessons = sub.add_parser("lessons", help="Distill archive JSONL to dubito.lessons/v1")
+    lessons.add_argument("--archive", type=Path, required=True)
+    lessons.add_argument("--indent", type=int, default=2)
+
     args = parser.parse_args(argv)
     if args.cmd == "check":
         score = run_check(
@@ -86,6 +108,25 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(json.dumps(result.to_dict(), indent=args.indent, sort_keys=True, default=str))
         return 0 if result.status == "converged" else 1
+    if args.cmd == "profile":
+        payload = evaluate_tool(
+            "dubito_profile",
+            {
+                "problem": str(args.problem),
+                "n_formulations": args.n_formulations,
+                "check_dual": not args.no_dual,
+                "check_properties": not args.no_properties,
+            },
+        )
+        print(json.dumps(payload, indent=args.indent, sort_keys=True))
+        return 0
+    if args.cmd == "tools":
+        print(json.dumps(tool_descriptors(), indent=args.indent, sort_keys=True))
+        return 0
+    if args.cmd == "lessons":
+        payload = distill_path(args.archive)
+        print(json.dumps(payload, indent=args.indent, sort_keys=True, default=str))
+        return 0
     raise AssertionError(args.cmd)
 
 

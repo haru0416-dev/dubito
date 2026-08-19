@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dubito"
-version = "0.2.0"
+version = "0.3.0"
 description = "Cross-check solutions across independently formulated solvers. Working name; product name TBD."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,6 +22,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+optuna = ["optuna>=3"]
+pysr = ["pysr>=0.16"]
+pyomo = ["pyomo>=6"]
 
 [project.scripts]
 dubito = "dubito.cli:main"
