@@ -43,6 +43,11 @@ def test_playbook_states_the_loop() -> None:
     assert "dubito_spec" in book["tools_order"]
     assert "formulation code" in book["instructions"].lower()
     assert any("verification" in item.lower() for item in book["do_not"])
+    heavy = book["when_told_heavy"]
+    assert "not a problem spec" in heavy["cannot"]
+    assert "local_optimality" in heavy["local_trap"]
+    assert any("independent" in item.lower() for item in heavy["if_measurable"])
+    assert any("nearby" in item.lower() or "hot path" in item.lower() for item in book["do_not"])
 
 
 def test_agent_brief_stop_on_agree() -> None:

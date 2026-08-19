@@ -23,7 +23,9 @@ INSTRUCTIONS = (
     "Call dubito_spec, then dubito_contract, write at least two independent "
     "modules from the narrative only, then dubito_check. Never copy the YAML "
     "verification block into solvers. On disagree, rewrite the named module "
-    "using agent.repair. agree is not a global proof; report agent.ceiling."
+    "using agent.repair. agree is not a global proof; report agent.ceiling. "
+    "A complaint that something is slow is not a spec: do not only patch the "
+    "nearby hot path."
 )
 
 KIND_HINTS: dict[str, str] = {
@@ -89,6 +91,7 @@ _DO_NOT = (
     "Do not import, parse, or copy the YAML verification block into formulations.",
     "Do not compile one shared constraint IR into every solver.",
     "Do not treat agree as a global optimality proof; report the ceiling.",
+    "Do not treat a nearby speedup as a global improvement; report the ceiling.",
     "Do not name a module types.py (stdlib shadowing).",
 )
 
@@ -200,6 +203,28 @@ def playbook() -> dict[str, Any]:
             "dubito_cegis has no in-process model. After you rewrite a file, call "
             "dubito_check again. --replace is a path map for tests, not an LLM."
         ),
+        "when_told_heavy": {
+            "cannot": (
+                "dubito does not derive a faster design from 'this feature is "
+                "slow'. That sentence is not a problem spec."
+            ),
+            "local_trap": (
+                "Models almost always patch the nearby hot path (cache, fewer "
+                "Hypothesis examples, skip a layer). That is the same failure "
+                "mode as local_optimality: a neighbor looks better, the dual "
+                "or residual ceiling was never asked."
+            ),
+            "if_measurable": [
+                "Write what heavy means as an objective and what must not break as constraints (narrative only).",
+                "Encode two independent formulations of that tradeoff, not two edits of the same function.",
+                "dubito_check: a better IR-feasible neighbor is disagree; beating the dual is a missing constraint.",
+                "agree still only means the class ceiling (often local / residual / dual of this IR).",
+            ],
+            "do_not": [
+                "Skip verification layers as the only speedup without a spec.",
+                "Treat a local patch that still agrees with itself as globally better.",
+            ],
+        },
     }
 
 
@@ -249,7 +274,7 @@ def agent_brief(
         next_actions = [{"action": "stop", "reason": "verdict is agree", "report": ceiling}]
     elif score.verdict == "error":
         errored = [name for name, status in score.optimality_status.items() if status == "error"]
-        next_actions = [
+    next_actions = [
             {
                 "action": "fix_runtime",
                 "solvers": errored,
