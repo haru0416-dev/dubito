@@ -30,3 +30,9 @@ python -m dubito check --problem probes/phase0/furniture.yaml \
 
 Agreeing runs write nothing. CEGIS appends on every disagreeing iteration of
 the same file.
+
+## Lessons (`dubito.lessons/v1`)
+
+`python -m dubito lessons --archive path.jsonl` (or `dubito.lessons.distill`)
+groups rows by `(problem_id, kind, verification_hash)` and counts them. This is
+material for an external agent; dubito does not rewrite prompts.

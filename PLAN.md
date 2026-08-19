@@ -12,7 +12,7 @@
 
 対象は、数理最適化(LP/MILP/凸/非線形)、制約充足、ブラックボックス最適化、記号回帰。対話利用(MCP)とループ組み込み(ライブラリ/CLI)の両方の顔を持つ。
 
-やらないこと: ソルバー自体の実装、汎用の完全なメタソルバー(一般問題を解く必要はない — 有用な部分集合で十分)、人間向けGUI。
+やらないこと: ソルバー自体の実装、汎用の完全なメタソルバー(一般問題を解く必要はない — 有用な部分集で十分)、人間向けGUI。
 
 ## 3. 設計原理
 
@@ -70,16 +70,22 @@ CEGISループ(反例→再定式化)、反例アーカイブの永続化、Hypo
 **Phase 3 — クラス拡張**
 ルーター実装、Optuna/PySR/SciPy/Pyomoバックエンド追加。検証強度の段階表示。
 
+**Phase 3 結果 (2026-08-19):** ルーターはソルバーではなく**検証層**を選ぶ。クラスカタログは `dubito.classes.PROFILES`。`nlp` は残差 IR + SciPy アダプタ + Rosenbrock プローブまで実装。`sat` / `blackbox` / 記号回帰 / 多目的 / routing / convex の KKT はプロファイルのみ（層は `skipped:not-implemented`）。Optuna/PySR/Pyomo は extra 名だけ予約し、本依存にはしていない。
+
 **Phase 4 — 二つの顔**
 MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性の保証(シード固定、許容誤差の明示)。
+
+**Phase 4 結果 (2026-08-19):** SDK 無し。`python -m dubito tools` が MCP 風 descriptor を出し、`dubito.faces.evaluate_tool` が既存の `verify` / CEGIS / archive / lessons / profile にディスパッチする。問題 YAML の `determinism.seed`（省略 0）を保持。OpenEvolve 側は既存 `dubito.evaluator`（`residual_ok` を追加）。
 
 **Phase 5 — 自己改善**
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
 
+**Phase 5 結果 (2026-08-19):** LLM は呼ばない。`dubito.archive/v1` を `(problem_id, kind, verification_hash)` で集計し `dubito.lessons/v1` にする。CLI は `python -m dubito lessons --archive`。プロンプト注入は外部エージェントの仕事。
+
 ## 6. 主要リスク
 
 - **数値誤差による偽不一致。** 浮動小数の許容誤差設計を最初から仕様化する。MILPは有理数演算で厳密照合できるのでMVPに向く(Phase 1をLP/MILPに絞る理由)。
-- **クラス間でクロスチェック不能なケース。** 凸やブラックボックスでは交換検査が効かない。検証強度の段階表示で誤魔化さず明示する。
+- **クラス間でクロスチェック不能なケース。** 凸やブラックボックスでは交換検査が効かない。検証強度の段階表示でごまかさず明示する。
 - **Z3の非線形実数の弱さ。** 多項式まではなんとかなるが超越関数は不得手。必要になったらdReal等を検討。今は非スコープ。
 - **スコープ肥大。** 6ソルバー全対応を最初にやらない。Phase 1の2ソルバー+1検証で価値が出なければ畳む。
 
