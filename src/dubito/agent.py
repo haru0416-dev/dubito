@@ -274,7 +274,7 @@ def agent_brief(
         next_actions = [{"action": "stop", "reason": "verdict is agree", "report": ceiling}]
     elif score.verdict == "error":
         errored = [name for name, status in score.optimality_status.items() if status == "error"]
-    next_actions = [
+        next_actions = [
             {
                 "action": "fix_runtime",
                 "solvers": errored,
