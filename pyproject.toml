@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dubito"
+version = "0.0.1"
+description = "Cross-check solutions across independently formulated solvers. Working name; product name TBD."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Haru" }]
+dependencies = [
+    "cvxpy>=1.6",
+    "cvxopt>=1.3",
+    "ortools>=9.10",
+    "z3-solver>=4.13",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+dubito = "dubito.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
