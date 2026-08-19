@@ -139,6 +139,8 @@ class ScoreVector:
     tolerances: Tolerances
     notes: list[str] = field(default_factory=list)
     exchanges: list[ExchangeDirection] = field(default_factory=list)
+    smt_feasible: dict[str, bool] = field(default_factory=dict)
+    smt_objective_match: dict[str, bool | None] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -156,6 +158,8 @@ class ScoreVector:
             "tolerances": self.tolerances.to_dict(),
             "notes": list(self.notes),
             "exchanges": [e.to_dict() for e in self.exchanges],
+            "smt_feasible": dict(self.smt_feasible),
+            "smt_objective_match": dict(self.smt_objective_match),
         }
 
 
@@ -187,4 +191,18 @@ EXCHANGE_GUARANTEE = (
     "formulation(s) and objective values match within tolerances. This is not "
     "a proof of global optimality, and correlated formulation bugs (the same "
     "mistake in every backend) are invisible at this layer."
+)
+
+SMT_GUARANTEE = (
+    "SMT against the verification IR only. The reported assignment is feasible "
+    "in the spec-derived Z3 encoding and the claimed objective matches the "
+    "verification objective. Exchange check was not run."
+)
+
+EXCHANGE_SMT_GUARANTEE = (
+    "exchange-check plus independent SMT of the verification IR: reported "
+    "solutions are feasible in peer formulations and in the spec-derived Z3 "
+    "encoding, and claimed objectives match the verification objective. This is "
+    "not a dual/optimality certificate. The verification IR must not be used to "
+    "generate solver code."
 )
