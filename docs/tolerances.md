@@ -22,7 +22,9 @@ exchange checker treats `x` as that integer. Z3 assignment checks then use
 exact integer equality, not a float box.
 
 This is why Phase 1 is LP/MILP-first: integer data plus integer variables can
-be compared without a dual-gap story.
+be compared without a dual-gap story. Phase 2 still emits a dual bound from the
+verification IR; a remaining gap is reported rather than treated as agreement
+failure, except when a claimed objective beats the bound.
 
 ## What a disagreement means
 
