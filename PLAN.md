@@ -79,7 +79,7 @@ MCPサーバー(対話用)とevaluatorアダプタ(OpenEvolve互換)。決定性
 
 **Phase 4 結果 (2026-08-19):** SDK 無しの stdio MCP（`python -m dubito mcp`）。ツールは `dubito_spec`（IR を出さない）→ `dubito_contract` → compact `dubito_check`（`agent.repair` / `ceiling`）。`call_tool` は ok/error 封筒。OpenEvolve 側は既存 `dubito.evaluator`。手順は `docs/agent.md`。
 
-**コード検証機 (2026-08-19):** 使う対象は定式化コード。`verify()` の先頭層 `code` が AST で IR import / ピア import / `formulation()` 欠落を見る。解が一致していても YAML をコンパイルしていれば `disagree`（`code_import`）。一般 Python 検証器にはしない。「重い」という訴えだけでは設計を導かない。モデルの近傍パッチは局所最適であり、測れる目的と制約を物語にしてから独立定式化する。詳細は `docs/agent.md`。
+**コード検証機 (2026-08-19):** 使う対象は定式化コード。`verify()` の先頭層 `code` が AST で IR import / ピア import / `formulation()` 欠落を見る。解が一致していても YAML をコンパイルしていれば `disagree`（`code_import`）。一般 Python 検証器にはしない。局所からの抜け方は「別系統の2本目 + `local_optimality` なら incumbent を破棄して spec から書き直し + 双対が閉じたら止まる」。詳細は `docs/agent.md`。
 
 **Phase 5 — 自己改善**
 反例アーカイブと失敗定式化ペアを、定式化プロンプト/変換ルールの改善に還流。エージェント知識注入の仕組みと同型で、知識がここでは自動生成される。
