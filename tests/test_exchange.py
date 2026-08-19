@@ -82,6 +82,7 @@ def test_score_vector_has_required_keys() -> None:
         "dual_gap",
         "dual_closed",
         "properties_ok",
+        "layers",
     ):
         assert key in payload
     assert payload["verification_strength"] == "exchange"
