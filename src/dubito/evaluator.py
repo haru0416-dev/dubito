@@ -53,6 +53,11 @@ def evaluate(program_path: str) -> dict[str, float]:
         "dual_ok": dual_ok,
         "properties_ok": properties_ok,
         "residual_ok": residual_ok,
+        "code_ok": (
+            1.0
+            if not score.code_ok or all(score.code_ok.values())
+            else 0.0
+        ),
         "n_counterexamples": float(len(score.counterexamples)),
     }
 

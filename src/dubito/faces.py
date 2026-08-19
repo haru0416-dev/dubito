@@ -24,10 +24,10 @@ from dubito.problem import load_problem
 from dubito.router import capabilities, route
 
 _TOOL_CHECK = (
-    "Verify independently written formulation() modules against a problem YAML. "
-    "Default compact=true returns agent.next / agent.repair / agent.ceiling. "
-    "Do not compile the YAML verification block into the solvers. "
-    "agree is not a global proof."
+    "Verify formulation code: independently written formulation() modules "
+    "against a problem YAML. Default compact=true returns agent.next / "
+    "agent.repair / agent.ceiling. Do not compile the YAML verification "
+    "block into the solvers. agree is not a global proof."
 )
 _TOOL_SPEC = (
     "Return the narrative, canonical variable names, class, and verification "
@@ -43,7 +43,7 @@ TOOLS: list[dict[str, object]] = [
     {
         "name": "dubito_playbook",
         "description": (
-            "How to use dubito as an external-model tool: spec → contract → "
+            "How to use dubito as a code verifier: spec → contract → "
             "two independent modules → check → repair. No in-process LLM."
         ),
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
