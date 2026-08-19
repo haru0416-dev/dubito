@@ -59,9 +59,17 @@ def test_ok_formulations_do_not_share_an_ir() -> None:
 def test_evaluator_returns_numeric_metrics(monkeypatch) -> None:
     monkeypatch.setenv("DUBITO_PEER_FORMULATIONS", str(_OK_ORTOOLS))
     metrics = evaluate(str(_OK_CVXPY))
-    assert set(metrics) >= {"combined_score", "agreement", "all_feasible", "optima_match", "smt_ok"}
+    assert set(metrics) >= {
+        "combined_score",
+        "agreement",
+        "all_feasible",
+        "optima_match",
+        "smt_ok",
+        "code_ok",
+    }
     assert metrics["combined_score"] == 1.0
     assert metrics["smt_ok"] == 1.0
+    assert metrics["code_ok"] == 1.0
     monkeypatch.setenv("DUBITO_PEER_FORMULATIONS", str(_OK_CVXPY))
     buggy = evaluate(str(_PHASE0 / "bugs/cvxpy_inverted_ratio.py"))
     assert buggy["combined_score"] == 0.0

@@ -39,6 +39,7 @@ def test_milp_route_pending_layers() -> None:
     assert routed.status["smt"] == "pending"
     assert routed.status["dual"] == "pending"
     assert routed.status["properties"] == "pending"
+    assert routed.status["code"] == "pending"
     assert "residual" not in routed.status
 
 
@@ -47,6 +48,7 @@ def test_nlp_route_skips_smt_and_dual() -> None:
     assert routed.status["exchange"] == "pending"
     assert routed.status["residual"] == "pending"
     assert routed.status["properties"] == "pending"
+    assert routed.status["code"] == "pending"
     assert "smt" not in routed.status
     assert "dual" not in routed.status
     assert "local neighborhood" in routed.profile.ceiling or "residual" in routed.profile.ceiling
